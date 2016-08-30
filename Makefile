@@ -1,6 +1,6 @@
 CC = clang++#g++
 
-EXE = "Seam\ Caving"
+EXE = "Seam\ Carving"
 
 SRC = $(wildcard ./*.cpp)
 OBJ = $(SRC:./%.cpp=./obj/%.o)
