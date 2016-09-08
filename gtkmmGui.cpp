@@ -6,33 +6,55 @@ void GtkmmGui::setMainWindow(){
   set_default_size(800, 600);
   set_border_width(10);
 
-  add(m_box1);
+  add(box1);
 }
+
+void GtkmmGui::setShown(){
+  buttonOpenImage.show();
+  buttonProtectPixels.show();
+  buttonRemovePixels.show();
+  comboBoxEnergy.show();
+  //areaImage.show();
+  //areaEnergy.show();
+  //areaSc.show();
+  box1.show();
+  box2.show();
+}
+
 void GtkmmGui::setSignals(){
   buttonOpenImage.signal_clicked().
-    connect(sigc::bind<Glib::ustring>(sigc::mem_fun(*this, &GtkmmGui::on_button_clicked_open_image),
-				      "button 1"));
+    connect(sigc::mem_fun(*this, &GtkmmGui::on_button_clicked_open_image));
   
-  comboBoxEnergy.signal_changed().connect(sigc::mem_fun(*this, &GtkmmGui::on_combo_changed) );
+  comboBoxEnergy.signal_changed().connect(sigc::mem_fun(*this, &GtkmmGui::on_combo_changed));
+#if 0
 
-  signal_check_resize().connect(sigc::bind<Glib::ustring>(sigc::mem_fun
-							  (*this, &GtkmmGui::on_my_check_resize),
-							  "mainWindow"));
+  signal_check_resize().
+    connect(sigc::bind<Glib::ustring>(sigc::mem_fun
+				      (*this, &GtkmmGui::on_my_check_resize),
+				      "mainWindow"));
 
-  scWindow->signal_check_resize().connect(sigc::bind<Glib::ustring>(sigc::mem_fun
-								    (*this, &GtkmmGui::on_my_check_resize),
-								    "scWindow"));
+  scWindow->
+    signal_check_resize().
+    connect(sigc::bind<Glib::ustring>(sigc::mem_fun
+				      (*this, &GtkmmGui::on_my_check_resize),
+				      "scWindow"));
+#endif
 }
 
 GtkmmGui::GtkmmGui()
-  :m_box1(Gtk::ORIENTATION_VERTICAL, 5),
-   m_box2(Gtk::ORIENTATION_HORIZONTAL, 5),
+  :box1(Gtk::ORIENTATION_VERTICAL, 5),
+   box2(Gtk::ORIENTATION_HORIZONTAL, 5),
    buttonOpenImage("Open image"),
-   seamCarving(nullptr)
+   buttonRemovePixels("Remove"),
+   buttonProtectPixels("Protect")
+   //seamCarving(nullptr)
 {
   setMainWindow();
 
-  m_box2.pack_start(buttonOpenImage, Gtk::PACK_SHRINK);
+  box2.pack_start(buttonOpenImage,     Gtk::PACK_SHRINK);
+  box2.pack_start(buttonRemovePixels,  Gtk::PACK_SHRINK);
+  box2.pack_start(buttonProtectPixels, Gtk::PACK_SHRINK);
+  box2.pack_start(comboBoxEnergy,      Gtk::PACK_SHRINK);
   {
     //Fill the combo:
     comboBoxEnergy.append("Simple");
@@ -42,38 +64,29 @@ GtkmmGui::GtkmmGui()
     comboBoxEnergy.set_active(0);
   }
 
-  m_box2.pack_start(comboBoxEnergy, Gtk::PACK_SHRINK);
-  comboBoxEnergy.show();
-
-  m_box1.pack_start(m_box2, Gtk::PACK_SHRINK);
-  buttonOpenImage.show();
-
-  m_box1.pack_start(areaImage);
-  m_box1.pack_start(areaEnergy);
+  box1.pack_start(box2, Gtk::PACK_SHRINK);
+  box1.pack_start(areaImage);
+  //box1.pack_start(areaEnergy);
 
   areaImage.set_events(Gdk::POINTER_MOTION_MASK | Gdk::BUTTON_PRESS_MASK);
-  //areaImage.add_events(Gdk::BUTTON_PRESS_MASK);
-    
-  areaImage.show();
-  areaEnergy.show();
-
-  scWindow = new Gtk::Window();
-  scWindow->set_keep_above(true);
-  scWindow->add(scArea);
-  scArea.show();
   
-  image  = new ImageByGtkmm(areaImage.image);
+  //windowSc = Gtk::Window();
+  windowSc.set_keep_above(true);
+  //windowSc.add(areaSc);
+
+  imageOriginal = std::unique_ptr<ImageByGtkmm>{new ImageByGtkmm(areaImage.image)};
+#if 0
   imageEnergy = new ImageByGtkmm(areaEnergy.image);
-  scImage = new ImageByGtkmm(scArea.image);
+  imageSc = new ImageByGtkmm(scArea.image);
+#endif
 
-  m_box1.show();
-  m_box2.show();
-
+  show_all();
   setSignals();
 }
 
 void GtkmmGui::on_combo_changed()
 {
+#if 0
   if(seamCarving == nullptr)
     return;
   
@@ -102,10 +115,11 @@ void GtkmmGui::on_combo_changed()
     }
   else
     std::cout << "invalid energy combobox" << std::endl;
-
+#endif
 }
 
 void GtkmmGui::on_my_check_resize(Glib::ustring data){
+#if 0
   if(data == "scWindow"){
     seamCarving->sizeChanged(scArea.get_allocation().get_width(),
 			   scArea.get_allocation().get_height());
@@ -119,9 +133,10 @@ void GtkmmGui::on_my_check_resize(Glib::ustring data){
 			     areaEnergy.get_allocation().get_height());
   }
   areaEnergy.queue_draw();
+#endif
 }
 
-void GtkmmGui::on_button_clicked_open_image(Glib::ustring data)
+void GtkmmGui::on_button_clicked_open_image()
 {
    Gtk::FileChooserDialog dialog("Please choose a file", Gtk::FILE_CHOOSER_ACTION_OPEN);
    dialog.set_transient_for(*this);
@@ -158,17 +173,19 @@ void GtkmmGui::on_button_clicked_open_image(Glib::ustring data)
 	//Notice that this is a std::string, not a Glib::ustring.
 	std::string filename = dialog.get_filename();
 	std::cout << "File selected: " <<  filename << std::endl;
-	image->openFromFile(filename);
+	imageOriginal->openFromFile(filename);
+#if 0
+
 	imageEnergy->setSameSize(*image);
 
-	scWindow->hide();
+	windowSc.hide();
 	seamCarving = new SeamCarving(*image, *imageEnergy, *scImage, en);
 
-	scWindow->resize_to_geometry(image->getWidth(), image->getHeight());
-	scWindow->set_keep_above(true);
-	scWindow->show();
+	windowSc.resize_to_geometry(image->getWidth(), image->getHeight());
+	windowSc.set_keep_above(true);
+	windowSc.show();
 	seamCarving->block = false;
- 
+	#endif
 	break;
       }
     case(Gtk::RESPONSE_CANCEL):

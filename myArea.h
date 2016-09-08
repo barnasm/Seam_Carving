@@ -20,7 +20,6 @@ protected:
   bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr) override;
   bool on_motion_notify_event(GdkEventMotion* motion_event) override;
   Cairo::RefPtr<Cairo::Surface> surface;
-  //  bool on_button_press_event(GdkEventButton* release_event) override;
 };
 
 #endif // GTKMM_EXAMPLE_MYAREA_H
