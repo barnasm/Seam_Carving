@@ -9,6 +9,7 @@
 MyArea::MyArea()
 {
   set_size_request(2, 2);
+  //surface = get_window()->create_similar_surface(Cairo::CONTENT_COLOR_ALPHA, 1000, 1000);
 }
 
 bool MyArea::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
@@ -26,23 +27,26 @@ bool MyArea::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
   
   cr->paint();
 
+  //auto cr2 = Cairo::Context::create(surface);
+  //cr2->paint();
+  
   return true;
 }
 
 bool MyArea::on_motion_notify_event(GdkEventMotion* motion_event){
-
   if(motion_event->state != Gdk::BUTTON1_MASK)
     return false;
-#if 0
-  if(!surface)
+#if 1
+  //if(!surface)
     surface = get_window()->create_similar_surface(Cairo::CONTENT_COLOR_ALPHA, 1000, 1000);
 
   auto cr = Cairo::Context::create(surface);
-  cr->set_source_rgba(0, 255, 0, 0.2);
-  cr->rectangle(motion_event->x, motion_event->y, 10, 10);
+  cr->set_source_rgba(0, 255, 0, 0.6);
+  cr->rectangle(motion_event->x, motion_event->y, 100, 100);
 
   cr->fill();
-#endif 
+
+#endif
   return true;
 }
 

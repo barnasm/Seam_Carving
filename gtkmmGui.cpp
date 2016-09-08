@@ -70,7 +70,6 @@ GtkmmGui::GtkmmGui()
   m_box2.show();
 
   setSignals();
-
 }
 
 void GtkmmGui::on_combo_changed()
