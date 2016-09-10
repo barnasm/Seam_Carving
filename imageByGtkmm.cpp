@@ -17,10 +17,10 @@ void ImageByGtkmm::openFromFile(const std::string filename)
   changed = true;
 }
 
-void ImageByGtkmm::setSameSize(Image &img)
+void ImageByGtkmm::setSameSize(std::size_t width, std::size_t height)
 {
-  width = img.getWidth();
-  height = img.getHeight();
+  this->width = width;
+  this->height = height;
   imageOriginal = *imgPtr = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB,
 						false,
       						8,

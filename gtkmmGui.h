@@ -39,14 +39,11 @@ protected:
 
   //images
   std::unique_ptr<ImageByGtkmm> imageOriginal;
-#if 0
-  ImageByGtkmm *imageEnergy;
-  Image *imageSc;
+  std::unique_ptr<ImageByGtkmm> imageEnergy;
+  std::unique_ptr<Image> imageSc;
 
-  //SeamCarving *seamCarving;
-
-  //std::shared_ptr<PixelEnergy> en;
-#endif
+  std::unique_ptr<SeamCarving> seamCarving;
+  std::shared_ptr<PixelEnergy> en;
 
   Gtk::Window windowSc;
 };

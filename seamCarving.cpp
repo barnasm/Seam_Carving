@@ -17,7 +17,9 @@ SeamCarving::SeamCarving(Image &imageOriginal,
   this->imageEnergy = &imageEnergy;
   this->imageToDisplay = &imageToDisplay;
 
-  scImage = new ScImage(imageOriginal.getWidth(), imageOriginal.getHeight());
+  scImage.reset(new ScImage(imageOriginal.getWidth(), imageOriginal.getHeight()));
+  //scImage = new ScImage(imageOriginal.getWidth(), imageOriginal.getHeight());
+  currentWidth = imageOriginal.getWidth();
   
   for(std::size_t y = 0; y < scImage->getHeight(); y++){
     for(std::size_t x = 0; x < scImage->getWidth(); x++){
@@ -29,7 +31,6 @@ SeamCarving::SeamCarving(Image &imageOriginal,
 	setEnergy(this->energy->computePixelEnergy(x, y, imageOriginal));
     }
   }
-  
   createImageToShow();
 }
 
@@ -72,38 +73,38 @@ void SeamCarving::computeImageEnergy(){
 }
 
 void SeamCarving::sizeChanged(std::size_t width, std::size_t height){
-  if(scImage == nullptr || block)
+  if(!scImage || block)
     return;
   
-  if(scImage->getWidth() == width)
+  if(currentWidth == width)
     return;
    
-  if(scImage->getWidth() < width){
-    scImage->setWidth(std::min(imageEnergy->getWidth(), width));
+  if(currentWidth < width){
+    currentWidth = std::min(scImage->getWidth(), width);
     
-    //ScPixel *px;
+        //ScPixel *px;
     //px->getNeighbour(ScPixel::LEFT). setNeighbour(px->getNeighbour(ScPixel::RIGHT), ScPixel::RIGHT);
     //px->getNeighbour(ScPixel::RIGHT).setNeighbour(px->getNeighbour(ScPixel::LEFT),  ScPixel::LEFT);
     //return;
   }
   else{
-    while((imageEnergy->getWidth() - width) > seams.size()){
+    while((scImage->getWidth() - width) > seams.size()){
       //randomVerticalSeam();
       verticalSeam();
-      //scImage->setWidth(scImage->getWidth()-1);       
+      //scImage->setWidth(currentWidth-1);       
     }
-    scImage->setWidth(width);
+    currentWidth = width;
   }
   createImageToShow();
 }
 
 void SeamCarving::createImageToShow(){
   std::size_t xt = 0;
-  imageToDisplay->setSameSize(*scImage);
+  imageToDisplay->setSameSize(currentWidth, scImage->getHeight());
   for(int y = 0; y < scImage->getHeight(); y++){
-    for(int x = 0; x < imageEnergy->getWidth(); x++){
-      if((*scImage)[y][x].nthSeam != 0 && (*scImage)[y][x].nthSeam  <=
-	 (imageEnergy->getWidth() - scImage->getWidth()))
+    for(int x = 0; x < scImage->getWidth(); x++){
+      if(scImage->isSeam(x, y) && scImage->getSeanNum(x, y) <=
+	 (scImage->getWidth() - currentWidth))
 	imageEnergy->setPixelColor(x, y, Color(255,0,0));
       else{
 	imageEnergy->setPixelColor(x, y, Color((*scImage)[y][x].getEnergy()/energy->MAX_ENERGY));
@@ -120,6 +121,8 @@ ScPixel::enUnit SeamCarving::computeEnergy(std::size_t x, std::size_t y){
 }
 
 ScPixel* SeamCarving::getPixelAbove(int x, int y){
+  return (*scImage)[y][x].getNeighbour(ScPixel::UP);
+    
   int nth = (int)(*scImage)[y-1][x].countSeams - (int)(*scImage)[y][x].countSeams;
   ScPixel *up = &(*scImage)[y-1][x];
 
@@ -146,6 +149,7 @@ ScPixel* SeamCarving::getPixelAbove(int x, int y){
 }
 void SeamCarving::setNextSeamPx(int xt, int x, int y){
   auto up = getPixelAbove(x, y);
+  (*scImage)[y][x].dir = xt;
   switch(xt){
   case 0:
     (*scImage)[y][x].nextSeamPx = up;
@@ -254,7 +258,7 @@ void SeamCarving::verticalSeam(){
   ScPixel *px = &(*scImage)[scImage->getHeight()-1][a-1]; //min total energy
   seams.push_back(px);
 
-  for(int i = 0; px != nullptr; i++){
+  for(int i = 0, dir; px != nullptr; i++, dir = px->dir, px = px->nextSeamPx){
     if(px->nthSeam != 0)
       std::cout << "error   " << i << "\n";
 
@@ -272,8 +276,25 @@ void SeamCarving::verticalSeam(){
      if(px->getNeighbour(ScPixel::RIGHT)->nthSeam != 0)
        std::cout << "error right\n";
     }
-    px = px->nextSeamPx;
-    //std::cout << "end" << std::endl;
+    
+#if 1
+    if(px->getNeighbour(ScPixel::DOWN) != nullptr && px->getNeighbour(ScPixel::DOWN)->nthSeam == 0){
+      auto ngbDown = px->getNeighbour(ScPixel::DOWN);
+      auto ngbUp = dir == 1?
+	px->getNeighbour(ScPixel::LEFT):
+	px->getNeighbour(ScPixel::RIGHT);
+           
+      ngbDown->setNeighbour(ngbUp, ScPixel::UP);
+
+      if(ngbUp == nullptr)
+	std::cout << "here you are " << dir << std::flush;
+
+      ngbUp->setNeighbour(ngbDown, ScPixel::DOWN);
+      
+      if(px->getNeighbour(ScPixel::DOWN)->nthSeam != 0)
+	std::cout << "error down\n";
+    }
+#endif
   }
 }
 

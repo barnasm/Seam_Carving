@@ -19,7 +19,9 @@ public:
   {
     imgPtr = &image;
   }
-  void setSameSize(Image&);
+  ~ImageByGtkmm(){}
+
+  void setSameSize(std::size_t width, std::size_t height);
   void openFromFile(const std::string filename);
   Color getPixelColor(int x, int y);
   void setPixelColor(std::size_t x, std::size_t y, const Color&);

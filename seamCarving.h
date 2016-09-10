@@ -15,9 +15,11 @@ class SeamCarving
 private:
   Image *imageEnergy;
   Image *imageToDisplay; 
-  ScImage *scImage;
+  std::unique_ptr<ScImage> scImage;
+  //ScImage *scImage;
   std::shared_ptr<PixelEnergy> energy;
   std::vector<ScPixel*> seams;
+  std::size_t currentWidth;
 
   void computeImageEnergy();
   void verticalSeam();

@@ -29,15 +29,11 @@ EnergySimple::computePixelEnergy
   switch(version){
     case BOTH:
 	return deltaX + deltaY;
-	break;
     case VERTICAL:
 	return deltaY;
-	break;
     case HORIZONTAL:	
 	return deltaX;
-	break;
     default:
   	return deltaX + deltaY; 
-  	break;
   }
 }

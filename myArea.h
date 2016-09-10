@@ -7,7 +7,7 @@
 #include <memory>
 #include <algorithm>
 #include <climits>
-
+#include <gtk/gtk.h>
 
 class MyArea : public Gtk::DrawingArea
 {
@@ -20,6 +20,7 @@ protected:
   bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr) override;
   bool on_motion_notify_event(GdkEventMotion* motion_event) override;
   Cairo::RefPtr<Cairo::Surface> surface;
+  static cairo_surface_t *layer;
 };
 
 #endif // GTKMM_EXAMPLE_MYAREA_H
