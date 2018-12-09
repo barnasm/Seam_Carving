@@ -1,3 +1,12 @@
-#pragma once
 
-class Image{};
+/*
+  IImage
+*/
+class IImage{
+  
+};
+
+/*
+  Image
+*/
+class Image : IImage{};

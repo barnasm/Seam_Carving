@@ -5,9 +5,9 @@
 /*
   main
 */
-int main(int argc, char** args){
-  ImageManager im;
-  im.openImage("images/img2.bmp");
+int main(int, char**){
+  ImageManager<Image> im;
+  im.openImage("images/img.bmp");
   std::cout << im.getEText() << std::endl;
 
   im.saveImage("img_new.jpg", Image());
@@ -15,3 +15,4 @@ int main(int argc, char** args){
 
   return 0;
 }
+
