@@ -63,8 +63,8 @@ void findMinPath(const auto& energyTable, auto& energyTableSum, ImageGIL<>& img4
 
   auto src = view(img4.m_img);
   rgb8c_view_t::xy_locator simg = src.xy_at(0,0);
-  simg[0] = simg[1] = simg[2] = 0;
-  simg[0] = 255;
+  // simg[0] = simg[1] = simg[2] = 0;
+  // simg[0] = 255;
 
   auto& res = energyTableSum;
 
@@ -86,6 +86,28 @@ void findMinPath(const auto& energyTable, auto& energyTableSum, ImageGIL<>& img4
   }
 }
 
+
+typedef struct {
+  uint8_t r, g, b;
+}pixel_t;
+
+void img2bytes(const auto& src, pixel_t dst[]){
+  for (int y=0; y<src.height(); ++y)
+    for (int x=0; x<src.width(); ++x){
+      dst[src.width()*y + x].r = src(x,y)[0];
+      dst[src.width()*y + x].g = src(x,y)[1];
+      dst[src.width()*y + x].b = src(x,y)[2];
+    }
+}
+
+void bytes2img(const pixel_t src[], auto& dst){
+  for (int y=0; y<dst.height(); ++y)
+    for (int x=0; x<dst.width(); ++x){
+      dst(x,y)[0] = src[dst.width()*y + x].r; 
+      dst(x,y)[1] = src[dst.width()*y + x].g; 
+      dst(x,y)[2] = src[dst.width()*y + x].b; 
+    }  
+}
 
 
 // ImageGIL img3(rgb8_image_t(img.m_img.dimensions()));
@@ -115,15 +137,35 @@ void findMinPath(const auto& energyTable, auto& energyTableSum, ImageGIL<>& img4
 /*
   main
 */
-int main(int, char**){
-  std::string imgPath = "images/10x10.bmp"; // why ""s doesnt work?
-  auto newImgPath = std::string(imgPath).insert(imgPath.find(".bmp"), "_new");
-  
-  ImageGIL img;
-  ImageManagerBoost im;
-  img = im.openImage(imgPath).value_or(img);
-  std::cout << im.getEText() << std::endl;
 
+
+int main(int, char**){
+  std::string imgPath = "images/img.bmp"; // why ""s doesnt work?
+  auto ImgPathOut = std::string(imgPath).insert(imgPath.find(".bmp"), "_out");
+  
+  ImageGIL img_in, img_out;
+  ImageManagerBoost im;
+  img_in = im.openImage(imgPath).value_or(img_in);
+  std::cout << "open image: " << im.getEText() << std::endl;
+
+
+  
+  pixel_t img_byte [img_in.m_img.height()*img_in.m_img.width()];
+
+  img2bytes(view(img_in.m_img), img_byte);
+  img_out = ImageGIL( rgb8_image_t(img_in.m_img.dimensions()) );
+  bytes2img(img_byte, view(img_out.m_img));
+
+  im.saveImage(ImgPathOut, img_out);
+  std::cout << "save image: " << im.getEText() << std::endl;
+
+
+
+
+
+  return 0;
+
+#if 0
   using Energy_t = int32_t;
   
   std::vector< std::vector<Energy_t> > energyTable   (img.m_img.height(), std::vector<Energy_t>(img.m_img.width()));
@@ -152,5 +194,7 @@ int main(int, char**){
   std::cout << im.getEText() << std::endl;
 
   return 0;
+#endif
 }
+
 
