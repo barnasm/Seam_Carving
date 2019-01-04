@@ -12,133 +12,106 @@
 #include <boost/gil/extension/numeric/resample.hpp>
 
 using namespace boost::gil;
-void computeEnergy(ImageGIL<>& img, ImageGIL<>& img4, auto& energyTable){
-  
-  auto src = view(img.m_img);
-  auto dst = view(img4.m_img);
-  
-  rgb8c_view_t::xy_locator src_loc = src.xy_at(0,0);
-  for (int y=0; y<src.height(); ++y)
-    {
-      rgb8_view_t::x_iterator dst_it  = dst.row_begin(y);
-      
-       for (int x=0; x<src.width(); ++x)
-	 {
-	   auto energy =
-	     (src_loc(-1,0)[0] - src_loc(1,0)[0])   * (src_loc(-1,0)[0] - src_loc(1,0)[0])
-	     + (src_loc(-1,0)[1] - src_loc(1,0)[1]) * (src_loc(-1,0)[1] - src_loc(1,0)[1]) 
-	     + (src_loc(-1,0)[2] - src_loc(1,0)[2]) * (src_loc(-1,0)[2] - src_loc(1,0)[2]);
-	     
-	   (*dst_it)[0] = (*dst_it)[1] = (*dst_it)[2] = energy/(255*3);
-	   energyTable[y][x] = energy;
-          ++dst_it;
-          ++src_loc.x(); // each dimension can be advanced separately
-	 }
-      src_loc+=point2<std::ptrdiff_t>(-src.width(),1); // carriage return
-    }
-}
-
-void computeEnergySum(const auto& energyTable, auto& energyTableSum){
-  assert(energyTable.size() > 2);
-  assert(energyTable[0].size() > 2);
-  
-  energyTableSum = energyTable;
-  auto& res = energyTableSum;
-  
-  //res[0] = energyTable[0];
-  for(auto yu = res.begin(), y = res.begin()+1; y < res.end(); ++y, ++yu){
-    auto x = y->begin();
-    auto xu0 = yu->begin();
-
-    *x += *std::min_element(xu0, xu0+2);
-    for(++x, ++xu0; x < y->end()-1; ++x, ++xu0)
-      *x += *std::min_element(xu0-1, xu0+2);
-    *x += *std::min_element(xu0-1, xu0+1);
-  }
-}
-
-void findMinPath(const auto& energyTable, auto& energyTableSum, ImageGIL<>& img4){
-  assert(energyTable.size() > 2);
-  assert(energyTable[0].size() > 2);
-
-  auto src = view(img4.m_img);
-  rgb8c_view_t::xy_locator simg = src.xy_at(0,0);
-  // simg[0] = simg[1] = simg[2] = 0;
-  // simg[0] = 255;
-
-  auto& res = energyTableSum;
-
-  auto y = res.rbegin();
-  auto x = std::min_element(y->begin(), y->end());
-  *x *= -1;
-  
-  for(; y < res.rend()-1;){
-    auto off = std::distance(y->begin(), x);    
-    ++y;
-    
-    if(off == 0)
-      x = std::min_element(y->begin()+off, y->begin()+off+2);
-    else if(off == y->size()-1)
-      x = std::min_element(y->begin()+off-1, y->begin()+off+1);
-    else
-      x = std::min_element(y->begin()+off-1, y->begin()+off+2);
-    *x *= -1;
-  }
-}
-
 
 typedef struct {
   uint8_t r, g, b;
 }pixel_t;
 
-void img2bytes(const auto& src, pixel_t dst[]){
+class ByteImgWrapper{
+public:
+  int heigh, width;
+  std::vector<pixel_t> img_byte;
+  ByteImgWrapper(int w, int h): heigh(h), width(w), img_byte(w*h) {}
+  pixel_t& operator() (int x, int y){ return img_byte[y*width + x]; }
+  const pixel_t& operator() (int x, int y) const { return img_byte[y*width + x]; }
+};
+
+void computeEnergy(const auto src[], auto dst[], auto& energyTable, int height, int width){
+    
+  // for (int y=0; y<height; ++y)
+  //   for (int x=0; x<width; ++x){
+  //     auto energy =
+  // 	  (src(x-1,y)[0] - src(x+1,y)[0]) * (src(x-1,y)[0] - src(x+1,0)[0])
+  // 	+ (src(x-1,y)[1] - src(x+1,y)[1]) * (src(x-1,y)[1] - src(x+1,0)[1]) 
+  // 	+ (src(x-1,y)[2] - src(x+1,y)[2]) * (src(x-1,y)[2] - src(x+1,0)[2]);
+      
+  //     dst(x,y)[0] = dst(x,y)[1] = dst(x,y)[2] = energy/(255*3);
+  //     energyTable[y][x] = energy;
+  //   }
+}
+
+void computeEnergySum(const auto& energyTable, auto& energyTableSum){
+  // assert(energyTable.size() > 2);
+  // assert(energyTable[0].size() > 2);
+  
+  // energyTableSum = energyTable;
+  // auto& res = energyTableSum;
+  
+  // //res[0] = energyTable[0];
+  // for(auto yu = res.begin(), y = res.begin()+1; y < res.end(); ++y, ++yu){
+  //   auto x = y->begin();
+  //   auto xu0 = yu->begin();
+
+  //   *x += *std::min_element(xu0, xu0+2);
+  //   for(++x, ++xu0; x < y->end()-1; ++x, ++xu0)
+  //     *x += *std::min_element(xu0-1, xu0+2);
+  //   *x += *std::min_element(xu0-1, xu0+1);
+  // }
+}
+
+void findMinPath(const auto& energyTable, auto& energyTableSum, ImageGIL<>& img4){
+  // assert(energyTable.size() > 2);
+  // assert(energyTable[0].size() > 2);
+
+  // auto src = view(img4.m_img);
+  // rgb8c_view_t::xy_locator simg = src.xy_at(0,0);
+  // // simg[0] = simg[1] = simg[2] = 0;
+  // // simg[0] = 255;
+
+  // auto& res = energyTableSum;
+
+  // auto y = res.rbegin();
+  // auto x = std::min_element(y->begin(), y->end());
+  // *x *= -1;
+  
+  // for(; y < res.rend()-1;){
+  //   auto off = std::distance(y->begin(), x);    
+  //   ++y;
+    
+  //   if(off == 0)
+  //     x = std::min_element(y->begin()+off, y->begin()+off+2);
+  //   else if(off == y->size()-1)
+  //     x = std::min_element(y->begin()+off-1, y->begin()+off+1);
+  //   else
+  //     x = std::min_element(y->begin()+off-1, y->begin()+off+2);
+  //   *x *= -1;
+  // }
+}
+
+
+
+void img2bytes(const auto& src, auto& dst){
   for (int y=0; y<src.height(); ++y)
     for (int x=0; x<src.width(); ++x){
-      dst[src.width()*y + x].r = src(x,y)[0];
-      dst[src.width()*y + x].g = src(x,y)[1];
-      dst[src.width()*y + x].b = src(x,y)[2];
+      dst(x,y).r = src(x,y)[0];
+      dst(x,y).g = src(x,y)[1];
+      dst(x,y).b = src(x,y)[2];
     }
 }
 
-void bytes2img(const pixel_t src[], auto& dst){
+void bytes2img(const auto& src, auto& dst){
   for (int y=0; y<dst.height(); ++y)
     for (int x=0; x<dst.width(); ++x){
-      dst(x,y)[0] = src[dst.width()*y + x].r; 
-      dst(x,y)[1] = src[dst.width()*y + x].g; 
-      dst(x,y)[2] = src[dst.width()*y + x].b; 
+      dst(x,y)[0] = src(x,y).r; 
+      dst(x,y)[1] = src(x,y).g; 
+      dst(x,y)[2] = src(x,y).b; 
     }  
 }
-
-
-// ImageGIL img3(rgb8_image_t(img.m_img.dimensions()));
-  // using Img = rgb8_image_t;
-  // using Pix = Img::value_type;
-  // auto foo =
-  //   [](rgb8_ref_t a) {
-  //   red_t   R;
-  //   green_t G;
-  //   blue_t  B;
-  //   //alpha_t A;
-  //   return Pix (
-  // 		get_color(a, R) ^ (get_color(a, R) | ~get_color(a, R)),
-  // 		get_color(a, G) ^ (get_color(a, G) | ~get_color(a, G)),
-  // 		get_color(a, B) ^ (get_color(a, B) | ~get_color(a, B))
-		
-  // 		//get_color(a, G) + get_color(a, G),
-  // 		//get_color(a, B) + get_color(a, B)
-  // 		//get_color(a, A) + get_color(a, A)
-  //               );
-  // };
-
-  // transform_pixels(view(img.m_img), view(img3.m_img), foo);
-
 
 
 /*
   main
 */
-
-
 int main(int, char**){
   std::string imgPath = "images/img.bmp"; // why ""s doesnt work?
   auto ImgPathOut = std::string(imgPath).insert(imgPath.find(".bmp"), "_out");
@@ -150,21 +123,21 @@ int main(int, char**){
 
 
   
-  pixel_t img_byte [img_in.m_img.height()*img_in.m_img.width()];
+  ByteImgWrapper img_byte( img_in.m_img.width(), img_in.m_img.height() );
 
   img2bytes(view(img_in.m_img), img_byte);
-  img_out = ImageGIL( rgb8_image_t(img_in.m_img.dimensions()) );
+  img_out = ImageGIL( rgb8_image_t(img_in.m_img.width()/2, img_in.m_img.height()) );
   bytes2img(img_byte, view(img_out.m_img));
 
-  im.saveImage(ImgPathOut, img_out);
-  std::cout << "save image: " << im.getEText() << std::endl;
-
-
-
-
+  //im.saveImage(ImgPathOut, img_out);
+  //std::cout << "save image: " << im.getEText() << std::endl;
 
   return 0;
 
+
+
+
+  
 #if 0
   using Energy_t = int32_t;
   
