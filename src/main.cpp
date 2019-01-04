@@ -49,15 +49,29 @@ public:
 void computeEnergy(const auto& src, auto& dst, auto& energyTable){
     
   for (int y=0; y<src.height; ++y)
-    for (int x=0; x<src.width; ++x){
+    for (int x=1; x<src.width-1; ++x){
+
       std::cout << src(x-1,y)[0] << " " << src(x-1,y)[1] << " " << src(x-1,y)[2] << std::endl;
-      int32_t energy =
-  	  (src(x-1,y)[0] - src(x+1,y)[0]) * (src(x-1,y)[0] - src(x+1,0)[0])
-  	+ (src(x-1,y)[1] - src(x+1,y)[1]) * (src(x-1,y)[1] - src(x+1,0)[1]) 
-  	+ (src(x-1,y)[2] - src(x+1,y)[2]) * (src(x-1,y)[2] - src(x+1,0)[2]);
+      std::cout << src(x+1,y)[0] << " " << src(x+1,y)[1] << " " << src(x+1,y)[2] << std::endl;
+
+      std::cout << (src(x-1,y)[0] - src(x+1,y)[0]) * (src(x-1,y)[0] - src(x+1,y)[0]) << std::endl;
+      std::cout << (src(x-1,y)[1] - src(x+1,y)[1]) * (src(x-1,y)[1] - src(x+1,y)[1]) << std::endl;
+      std::cout << (src(x-1,y)[2] - src(x+1,y)[2]) * (src(x-1,y)[2] - src(x+1,y)[2]) << std::endl;
+
+      std::cout <<
+	(src(x-1,y)[0] - src(x+1,y)[0]) * (src(x-1,y)[0] - src(x+1,y)[0])+
+	(src(x-1,y)[1] - src(x+1,y)[1]) * (src(x-1,y)[1] - src(x+1,y)[1])+
+	(src(x-1,y)[2] - src(x+1,y)[2]) * (src(x-1,y)[2] - src(x+1,y)[2]) << std::endl;
+     
       
-      // dst(x,y)[0] = dst(x,y)[1] = 
-	dst(x,y)[2] = energy/(255*3);
+      int energy =
+	(src(x-1,y)[0] - src(x+1,y)[0]) * (src(x-1,y)[0] - src(x+1,y)[0]) +
+	(src(x-1,y)[1] - src(x+1,y)[1]) * (src(x-1,y)[1] - src(x+1,y)[1]) +
+	(src(x-1,y)[2] - src(x+1,y)[2]) * (src(x-1,y)[2] - src(x+1,y)[2]);
+
+       std::cout << energy << std::endl << std::endl;
+
+       dst(x,y)[0] = dst(x,y)[1] = dst(x,y)[2] = energy/(255*3);
       // dst(x,y)[0] = src(x,y)[0];
       // dst(x,y)[1] = src(x,y)[1];
       // dst(x,y)[2] = src(x,y)[2];
