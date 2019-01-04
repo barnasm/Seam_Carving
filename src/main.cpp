@@ -13,31 +13,55 @@
 
 using namespace boost::gil;
 
-typedef struct {
-  uint8_t r, g, b;
-}pixel_t;
+template<typename T = int32_t>
+struct pixel_t{
+  T r, g, b;
 
-class ByteImgWrapper{
-public:
-  int heigh, width;
-  std::vector<pixel_t> img_byte;
-  ByteImgWrapper(int w, int h): heigh(h), width(w), img_byte(w*h) {}
-  pixel_t& operator() (int x, int y){ return img_byte[y*width + x]; }
-  const pixel_t& operator() (int x, int y) const { return img_byte[y*width + x]; }
+  T& operator[](int i){
+    switch(i){
+    case 0: return r;
+    case 1: return g;
+    case 2: return b;
+    default: return b;
+    }
+  }
+
+  const T& operator[](int i) const{
+    switch(i){
+    case 0: return r;
+    case 1: return g;
+    case 2: return b;
+    default: return b;
+    }
+  }
 };
 
-void computeEnergy(const auto src[], auto dst[], auto& energyTable, int height, int width){
+template<typename T = pixel_t<>>
+class ByteImgWrapper{
+public:
+  int height, width;
+  std::vector<T> img_byte;
+  ByteImgWrapper(int w, int h): height(h), width(w), img_byte(w*h) {}
+  T& operator() (int x, int y){ return img_byte[y*width + x]; }
+  const T& operator() (int x, int y) const { return img_byte[y*width + x]; }
+};
+
+void computeEnergy(const auto& src, auto& dst, auto& energyTable){
     
-  // for (int y=0; y<height; ++y)
-  //   for (int x=0; x<width; ++x){
-  //     auto energy =
-  // 	  (src(x-1,y)[0] - src(x+1,y)[0]) * (src(x-1,y)[0] - src(x+1,0)[0])
-  // 	+ (src(x-1,y)[1] - src(x+1,y)[1]) * (src(x-1,y)[1] - src(x+1,0)[1]) 
-  // 	+ (src(x-1,y)[2] - src(x+1,y)[2]) * (src(x-1,y)[2] - src(x+1,0)[2]);
+  for (int y=0; y<src.height; ++y)
+    for (int x=1; x<src.width-1; ++x){
+      int32_t energy =
+  	  (src(x-1,y)[0] - src(x+1,y)[0]) * (src(x-1,y)[0] - src(x+1,0)[0])
+  	+ (src(x-1,y)[1] - src(x+1,y)[1]) * (src(x-1,y)[1] - src(x+1,0)[1]) 
+  	+ (src(x-1,y)[2] - src(x+1,y)[2]) * (src(x-1,y)[2] - src(x+1,0)[2]);
       
-  //     dst(x,y)[0] = dst(x,y)[1] = dst(x,y)[2] = energy/(255*3);
-  //     energyTable[y][x] = energy;
-  //   }
+      // dst(x,y)[0] = dst(x,y)[1] = 
+	dst(x,y)[2] = energy/(255*3);
+      // dst(x,y)[0] = src(x,y)[0];
+      // dst(x,y)[1] = src(x,y)[1];
+      // dst(x,y)[2] = src(x,y)[2];
+      energyTable(x,y) = energy;
+    }
 }
 
 void computeEnergySum(const auto& energyTable, auto& energyTableSum){
@@ -93,18 +117,18 @@ void findMinPath(const auto& energyTable, auto& energyTableSum, ImageGIL<>& img4
 void img2bytes(const auto& src, auto& dst){
   for (int y=0; y<src.height(); ++y)
     for (int x=0; x<src.width(); ++x){
-      dst(x,y).r = src(x,y)[0];
-      dst(x,y).g = src(x,y)[1];
-      dst(x,y).b = src(x,y)[2];
+      dst(x,y)[0] = src(x,y)[0];
+      dst(x,y)[1] = src(x,y)[1];
+      dst(x,y)[2] = src(x,y)[2];
     }
 }
 
 void bytes2img(const auto& src, auto& dst){
   for (int y=0; y<dst.height(); ++y)
     for (int x=0; x<dst.width(); ++x){
-      dst(x,y)[0] = src(x,y).r; 
-      dst(x,y)[1] = src(x,y).g; 
-      dst(x,y)[2] = src(x,y).b; 
+      dst(x,y)[0] = src(x,y)[0]; 
+      dst(x,y)[1] = src(x,y)[1]; 
+      dst(x,y)[2] = src(x,y)[2]; 
     }  
 }
 
@@ -122,15 +146,25 @@ int main(int, char**){
   std::cout << "open image: " << im.getEText() << std::endl;
 
 
-  
-  ByteImgWrapper img_byte( img_in.m_img.width(), img_in.m_img.height() );
+  ByteImgWrapper img_byte_in ( img_in.m_img.width(), img_in.m_img.height() );
+  ByteImgWrapper img_byte_out( img_in.m_img.width(), img_in.m_img.height() );
 
-  img2bytes(view(img_in.m_img), img_byte);
-  img_out = ImageGIL( rgb8_image_t(img_in.m_img.width()/2, img_in.m_img.height()) );
-  bytes2img(img_byte, view(img_out.m_img));
+  img2bytes(view(img_in.m_img), img_byte_in);
 
-  //im.saveImage(ImgPathOut, img_out);
-  //std::cout << "save image: " << im.getEText() << std::endl;
+
+  using Energy_t = int32_t;
+  ByteImgWrapper<Energy_t> energyTable(img_byte_in.width, img_byte_in.height);
+  ByteImgWrapper<Energy_t> energyTableSum(img_byte_in.width, img_byte_in.height);
+
+  computeEnergy(img_byte_in, img_byte_out, energyTable);
+  //computeEnergySum(energyTable, energyTableSum);
+
+
+  img_out = ImageGIL( rgb8_image_t(img_byte_out.width, img_byte_out.height) );
+  bytes2img(img_byte_out, view(img_out.m_img));
+
+  im.saveImage(ImgPathOut, img_out);
+  std::cout << "save image: " << im.getEText() << std::endl;
 
   return 0;
 
