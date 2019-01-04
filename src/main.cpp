@@ -61,22 +61,22 @@ void computeEnergy(const auto& src, auto& dst, auto& energyTable){
 }
 
 void computeEnergySum(const auto& energyTable, auto& energyTableSum){
-  // assert(energyTable.size() > 2);
-  // assert(energyTable[0].size() > 2);
+  assert(energyTable.width > 2);
+  assert(energyTable.height > 2);
   
-  // energyTableSum = energyTable;
-  // auto& res = energyTableSum;
+  energyTableSum.img_byte = energyTable.img_byte;
+  auto& res = energyTableSum;
   
-  // //res[0] = energyTable[0];
-  // for(auto yu = res.begin(), y = res.begin()+1; y < res.end(); ++y, ++yu){
-  //   auto x = y->begin();
-  //   auto xu0 = yu->begin();
+  //res[0] = energyTable[0];
+  for(auto yu = res.begin(), y = res.begin()+1; y < res.end(); ++y, ++yu){
+    auto x = y->begin();
+    auto xu0 = yu->begin();
 
-  //   *x += *std::min_element(xu0, xu0+2);
-  //   for(++x, ++xu0; x < y->end()-1; ++x, ++xu0)
-  //     *x += *std::min_element(xu0-1, xu0+2);
-  //   *x += *std::min_element(xu0-1, xu0+1);
-  // }
+    *x += *std::min_element(xu0, xu0+2);
+    for(++x, ++xu0; x < y->end()-1; ++x, ++xu0)
+      *x += *std::min_element(xu0-1, xu0+2);
+    *x += *std::min_element(xu0-1, xu0+1);
+  }
 }
 
 void findMinPath(const auto& energyTable, auto& energyTableSum, ImageGIL<>& img4){
@@ -153,7 +153,7 @@ int main(int, char**){
   ByteImgWrapper<Energy_t> energyTableSum(img_byte_in.width, img_byte_in.height);
 
   computeEnergy(img_byte_in, img_byte_out, energyTable);
-  //computeEnergySum(energyTable, energyTableSum);
+  computeEnergySum(energyTable, energyTableSum);
 
   for(int y = 0; y < 10; y++){
     for(int x = 0; x < 10; x++){
@@ -161,6 +161,12 @@ int main(int, char**){
     }
     std::cout << std::endl << std::string(9*10,'-') << std::endl;
   } 
+  for(int y = 0; y < 10; y++){
+   std::cout << std::endl << std::string(9*10,'-') << std::endl;
+   for(int x = 0; x < 10; x++){
+      std::cout << std::setw(6) << energyTableSum[y][x] << " | ";
+    }
+  }
 
   
 
@@ -184,18 +190,6 @@ int main(int, char**){
 
   findMinPath(energyTable, energyTableSum, img4);
 
-  for(int y = 0; y < 10; y++){
-    for(int x = 0; x < 10; x++){
-      std::cout << std::setw(6) << energyTable[y][x] << " | ";
-    }
-    std::cout << std::endl << std::string(9*10,'-') << std::endl;
-  } 
-  for(int y = 0; y < 10; y++){
-   std::cout << std::endl << std::string(9*10,'-') << std::endl;
-   for(int x = 0; x < 10; x++){
-      std::cout << std::setw(6) << energyTableSum[y][x] << " | ";
-    }
-  }
  #endif
 }
 
