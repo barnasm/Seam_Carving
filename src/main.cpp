@@ -13,7 +13,7 @@
 
 using namespace boost::gil;
 
-template<typename T = int32_t>
+template<typename T = uint8_t>
 struct pixel_t{
   T r, g, b;
 
@@ -49,7 +49,7 @@ public:
 void computeEnergy(const auto& src, auto& dst, auto& energyTable){
     
   for (int y=0; y<src.height; ++y)
-    for (int x=1; x<src.width-1; ++x){
+    for (int x=0; x<src.width; ++x){ //<-- access to -1 elem!
       int energy =
 	(src(x-1,y)[0] - src(x+1,y)[0]) * (src(x-1,y)[0] - src(x+1,y)[0]) +
 	(src(x-1,y)[1] - src(x+1,y)[1]) * (src(x-1,y)[1] - src(x+1,y)[1]) +
@@ -65,50 +65,47 @@ void computeEnergySum(const auto& energyTable, auto& energyTableSum){
   assert(energyTable.height > 2);
   
   energyTableSum.img_byte = energyTable.img_byte;
+
+  auto& origin = energyTable;
   auto& res = energyTableSum;
   
-  //res[0] = energyTable[0];
-  for(auto yu = res.begin(), y = res.begin()+1; y < res.end(); ++y, ++yu){
-    auto x = y->begin();
-    auto xu0 = yu->begin();
+  for(int y=1; y < res.height; ++y){
+    auto x   = res.img_byte.begin() + res.width * y;
+    auto xu0 = res.img_byte.begin() + res.width * (y-1);
 
     *x += *std::min_element(xu0, xu0+2);
-    for(++x, ++xu0; x < y->end()-1; ++x, ++xu0)
+    int i = 2;
+    for(++x, ++xu0; i < res.width; ++x, ++xu0, i++)
       *x += *std::min_element(xu0-1, xu0+2);
     *x += *std::min_element(xu0-1, xu0+1);
   }
 }
 
-void findMinPath(const auto& energyTable, auto& energyTableSum, ImageGIL<>& img4){
-  // assert(energyTable.size() > 2);
-  // assert(energyTable[0].size() > 2);
+void findMinPath(const auto& energyTable, auto& energyTableSum, auto& img){
+  assert(energyTable.width > 2);
+  assert(energyTable.height > 2);
 
-  // auto src = view(img4.m_img);
-  // rgb8c_view_t::xy_locator simg = src.xy_at(0,0);
-  // // simg[0] = simg[1] = simg[2] = 0;
-  // // simg[0] = 255;
+  auto& res = energyTableSum;
 
-  // auto& res = energyTableSum;
-
-  // auto y = res.rbegin();
-  // auto x = std::min_element(y->begin(), y->end());
-  // *x *= -1;
+  auto y = res.img_byte.begin() + img.width * (img.height-1);
+  auto x = std::min_element(y, y+img.width);
+  *x *= -1;
+  //auto off = std::distance(y, x);
   
-  // for(; y < res.rend()-1;){
-  //   auto off = std::distance(y->begin(), x);    
-  //   ++y;
+  for(int i=1; i < img.height; i++){
+    auto off = std::distance(y, x);    
+    img(off, img.height-i)[0] = 255;
+    y -= res.width;
     
-  //   if(off == 0)
-  //     x = std::min_element(y->begin()+off, y->begin()+off+2);
-  //   else if(off == y->size()-1)
-  //     x = std::min_element(y->begin()+off-1, y->begin()+off+1);
-  //   else
-  //     x = std::min_element(y->begin()+off-1, y->begin()+off+2);
-  //   *x *= -1;
-  // }
+     if(off == 0)
+       x = std::min_element(y, y+2);
+     else if(off == img.width-1)
+       x = std::min_element(y+off-1, y+off+1);
+     else
+       x = std::min_element(y+off-1, y+off+2);
+     *x *= -1;
+  }
 }
-
-
 
 void img2bytes(const auto& src, auto& dst){
   for (int y=0; y<src.height(); ++y)
@@ -128,12 +125,11 @@ void bytes2img(const auto& src, auto& dst){
     }  
 }
 
-
 /*
   main
 */
 int main(int, char**){
-  std::string imgPath = "images/10x10.bmp"; // why ""s doesnt work?
+  std::string imgPath = "images/img.bmp"; // why ""s doesnt work?
   auto ImgPathOut = std::string(imgPath).insert(imgPath.find(".bmp"), "_out");
   
   ImageGIL img_in, img_out;
@@ -154,19 +150,20 @@ int main(int, char**){
 
   computeEnergy(img_byte_in, img_byte_out, energyTable);
   computeEnergySum(energyTable, energyTableSum);
-
-  for(int y = 0; y < 10; y++){
-    for(int x = 0; x < 10; x++){
-      std::cout << std::setw(6) << energyTable(x,y) << " | ";
-    }
-    std::cout << std::endl << std::string(9*10,'-') << std::endl;
-  } 
-  for(int y = 0; y < 10; y++){
-   std::cout << std::endl << std::string(9*10,'-') << std::endl;
-   for(int x = 0; x < 10; x++){
-      std::cout << std::setw(6) << energyTableSum[y][x] << " | ";
-    }
-  }
+  findMinPath(energyTable, energyTableSum, img_byte_out);
+  
+  // for(int y = 0; y < 10; y++){
+  //   for(int x = 0; x < 10; x++){
+  //     std::cout << std::setw(6) << energyTable(x,y) << " | ";
+  //   }
+  //   std::cout << std::endl << std::string(9*10,'-') << std::endl;
+  // } 
+  // for(int y = 0; y < 10; y++){
+  //  std::cout << std::endl << std::string(9*10,'-') << std::endl;
+  //  for(int x = 0; x < 10; x++){
+  //    std::cout << std::setw(6) << energyTableSum(x,y) << " | ";
+  //   }
+  // }
 
   
 
@@ -177,20 +174,6 @@ int main(int, char**){
   std::cout << "save image: " << im.getEText() << std::endl;
 
   return 0;
-
-
-
-
-  
-#if 0
-  ImageGIL img4(rgb8_image_t(img.m_img.dimensions()));
-  computeEnergy(img, img4, energyTable);
-  computeEnergySum(energyTable, energyTableSum);
-
-
-  findMinPath(energyTable, energyTableSum, img4);
-
- #endif
 }
 
 
