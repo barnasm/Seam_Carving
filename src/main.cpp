@@ -137,7 +137,7 @@ void bytes2img(const auto& src, auto& dst){
   main
 */
 int main(int, char**){
-  std::string imgPath = "images/img.bmp"; // why ""s doesnt work?
+  std::string imgPath = "images/10x10.bmp"; // why ""s doesnt work?
   auto ImgPathOut = std::string(imgPath).insert(imgPath.find(".bmp"), "_out");
   
   ImageGIL img_in, img_out;
@@ -159,6 +159,14 @@ int main(int, char**){
   computeEnergy(img_byte_in, img_byte_out, energyTable);
   //computeEnergySum(energyTable, energyTableSum);
 
+  for(int y = 0; y < 10; y++){
+    for(int x = 0; x < 10; x++){
+      std::cout << std::setw(6) << energyTable(x,y) << " | ";
+    }
+    std::cout << std::endl << std::string(9*10,'-') << std::endl;
+  } 
+
+  
 
   img_out = ImageGIL( rgb8_image_t(img_byte_out.width, img_byte_out.height) );
   bytes2img(img_byte_out, view(img_out.m_img));
@@ -173,10 +181,6 @@ int main(int, char**){
 
   
 #if 0
-  using Energy_t = int32_t;
-  
-  std::vector< std::vector<Energy_t> > energyTable   (img.m_img.height(), std::vector<Energy_t>(img.m_img.width()));
-  std::vector< std::vector<Energy_t> > energyTableSum(img.m_img.height(), std::vector<Energy_t>(img.m_img.width()));
   ImageGIL img4(rgb8_image_t(img.m_img.dimensions()));
   computeEnergy(img, img4, energyTable);
   computeEnergySum(energyTable, energyTableSum);
@@ -196,12 +200,7 @@ int main(int, char**){
       std::cout << std::setw(6) << energyTableSum[y][x] << " | ";
     }
   }
- 
-  im.saveImage(newImgPath, img4);
-  std::cout << im.getEText() << std::endl;
-
-  return 0;
-#endif
+ #endif
 }
 
 
