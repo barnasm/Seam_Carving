@@ -49,7 +49,8 @@ public:
 void computeEnergy(const auto& src, auto& dst, auto& energyTable){
     
   for (int y=0; y<src.height; ++y)
-    for (int x=1; x<src.width-1; ++x){
+    for (int x=0; x<src.width; ++x){
+      std::cout << src(x-1,y)[0] << " " << src(x-1,y)[1] << " " << src(x-1,y)[2] << std::endl;
       int32_t energy =
   	  (src(x-1,y)[0] - src(x+1,y)[0]) * (src(x-1,y)[0] - src(x+1,0)[0])
   	+ (src(x-1,y)[1] - src(x+1,y)[1]) * (src(x-1,y)[1] - src(x+1,0)[1]) 
