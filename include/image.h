@@ -6,6 +6,7 @@
 class IImage{
 protected:
 public:
+  using _ImageIpl = void;
 };
 
 /*
@@ -21,6 +22,7 @@ public:
   ImageGIL() = default;
   ImageGIL(ImageIpl &&i) : m_img(i) {}
   operator ImageIpl&() { return m_img; }
+  //TODO view() cast
 };
 
 
