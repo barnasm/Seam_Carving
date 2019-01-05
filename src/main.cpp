@@ -46,7 +46,7 @@ public:
   const T& operator() (int x, int y) const { return img_byte[y*width + x]; }
 };
 
-void computeEnergy(const auto& src auto& energyTable){
+void computeEnergy(const auto& src, auto& energyTable){
     
   for (int y=0; y<src.height; ++y)
     for (int x=0; x<src.width; ++x){ //<-- access to -1 elem!
@@ -141,15 +141,16 @@ void bytes2img(const auto& src, auto& dst){
 
 void visualiseSeams(const auto& removedPixels, auto& img, const auto& energyTable){
   for (int y=0; y<img.height; ++y)
-    for (int x=0; x<img.width; ++x)
+    for (int x=0; x<img.width; ++x){
       img(x,y)[0] = img(x,y)[1] = img(x,y)[2] = energyTable(x,y)/(255*3);
       img(x,y).r |=  -removedPixels(x,y) & 0xff;
+    }
 }
 
 void removeSeam(const auto& removedPixels, auto& img){
   ByteImgWrapper img_res(img.width-1, img.height);
   for (int y=0; y<img_res.height; ++y)
-    for (int x=0, o=1; x<img_res.width; ++x){
+    for (int x=0, o=0; x<img_res.width; ++x){
       if(removedPixels(x,y)) o=1;
       img_res(x,y) = img(x+o, y);
     }
@@ -161,7 +162,7 @@ void removeSeam(const auto& removedPixels, auto& img){
   main
 */
 int main(int, char**){
-  std::string imgPath = "images/img.bmp"; // why ""s doesnt work?
+  std::string imgPath = "images/img2.bmp"; // why ""s doesnt work?
   auto ImgPathOut = std::string(imgPath).insert(imgPath.find(".bmp"), "_out");
   auto ImgEnergyPathOut = std::string(imgPath).insert(imgPath.find(".bmp"), "_energy_out");
   
@@ -173,13 +174,12 @@ int main(int, char**){
 
   
   ByteImgWrapper img_byte ( img_in.m_img.width(), img_in.m_img.height() );
-  //ByteImgWrapper img_byte_out( img_in.m_img.width()-1, img_in.m_img.height() );
   ByteImgWrapper img_energy_byte_out( img_in.m_img.width(), img_in.m_img.height() );
 
   img2bytes(view(img_in.m_img), img_byte);
 
 
-  for(int i = 0; i < 100; i++){
+  for(int i = 0; i < img_in.m_img.width()/2; i++){
     using Energy_t = int32_t;
     ByteImgWrapper<Energy_t> energyTable   (img_byte.width, img_byte.height);
     ByteImgWrapper<Energy_t> energyTableSum(img_byte.width, img_byte.height);
