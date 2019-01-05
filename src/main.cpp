@@ -81,20 +81,22 @@ void computeEnergySum(const auto& energyTable, auto& energyTableSum){
   }
 }
 
-void findMinPath(const auto& energyTable, auto& energyTableSum, auto& img){
+void findMinPath(const auto& energyTable, auto& energyTableSum, auto& removedPixels){
   assert(energyTable.width > 2);
   assert(energyTable.height > 2);
 
   auto& res = energyTableSum;
-
+  const auto& img = energyTableSum;
+  
   auto y = res.img_byte.begin() + img.width * (img.height-1);
   auto x = std::min_element(y, y+img.width);
-  *x *= -1;
-  //auto off = std::distance(y, x);
+  //*x *= -1;
+  
   
   for(int i=1; i < img.height; i++){
     auto off = std::distance(y, x);    
-    img(off, img.height-i)[0] = 255;
+    //img(off, img.height-i)[0] = 255;
+    removedPixels(off, img.height-i) = true;
     y -= res.width;
     
      if(off == 0)
@@ -103,7 +105,7 @@ void findMinPath(const auto& energyTable, auto& energyTableSum, auto& img){
        x = std::min_element(y+off-1, y+off+1);
      else
        x = std::min_element(y+off-1, y+off+2);
-     *x *= -1;
+     //*x *= -1;
   }
 }
 
@@ -145,12 +147,13 @@ int main(int, char**){
 
 
   using Energy_t = int32_t;
-  ByteImgWrapper<Energy_t> energyTable(img_byte_in.width, img_byte_in.height);
+  ByteImgWrapper<Energy_t> energyTable   (img_byte_in.width, img_byte_in.height);
   ByteImgWrapper<Energy_t> energyTableSum(img_byte_in.width, img_byte_in.height);
+  ByteImgWrapper<int8_t>   removedPixels (img_byte_in.width, img_byte_in.height);
 
   computeEnergy(img_byte_in, img_byte_out, energyTable);
   computeEnergySum(energyTable, energyTableSum);
-  findMinPath(energyTable, energyTableSum, img_byte_out);
+  findMinPath(energyTable, energyTableSum, removedPixels, img_byte_out);
   
   // for(int y = 0; y < 10; y++){
   //   for(int x = 0; x < 10; x++){
