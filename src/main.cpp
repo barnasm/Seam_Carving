@@ -47,7 +47,7 @@ class ByteImgWrapper{
 public:
   int height, width;
   std::vector<T> img_byte;
-  ByteImgWrapper(int w, int h): height(h), width(w), img_byte(w*h) {}
+  ByteImgWrapper(int w, int h): height(h), width(w), img_byte(w*h+1) {}
   T& operator() (int x, int y){ return img_byte[y*width + x]; }
   const T& operator() (int x, int y) const { return img_byte[y*width + x]; }
 };
@@ -125,6 +125,8 @@ void findMinPath(const auto& energyTable, auto& energyTableSum, auto& removedPix
        x = std::min_element(y+off-1, y+off+2);
      //*x |= 0xffffffff;
   }
+  auto off = std::distance(y, x);    
+  removedPixels(off, 0) = true;
 }
 
 void img2bytes(const auto& src, auto& dst){
@@ -175,17 +177,17 @@ void SeamCarving(const auto& img_in, auto& img_byte, auto& img_energy_byte_out){
     ByteImgWrapper<int8_t>   removedPixels (img_byte.width, img_byte.height);
     
     computeEnergy(img_byte, energyTable);
-
-    for(int y = 0; y < energyTable.height; y++){
-      for(int x = 0; x < energyTable.width; x++)
-    	std::cout << std::setw(8) << energyTable(x,y);
-      std::cout << std::endl;
-    }
-    
     computeEnergySum(energyTable, energyTableSum);
     findMinPath(energyTable, energyTableSum, removedPixels);
-    //visualiseSeams(removedPixels, img_energy_byte_out, energyTable);
-    removeSeam(removedPixels, img_byte); 
+    for(int y = 0; y < energyTable.height; y++){
+      for(int x = 0; x < energyTable.width; x++)
+    	std::cout << std::setw(8) << (int)removedPixels(x,y);
+      std::cout << std::endl;
+    }  std::cout << std::endl;
+
+    
+    // //visualiseSeams(removedPixels, img_energy_byte_out, energyTable);
+    // removeSeam(removedPixels, img_byte); 
   }
 }
 
@@ -202,11 +204,10 @@ void timeMeasure(auto& foo){
 	    << 1000.0 * (c_end-c_start) / CLOCKS_PER_SEC << " ms\n"
 	    << "Wall clock time passed: "
 	    << std::chrono::duration<double, std::milli>(t_end-t_start).count()
-	    << " ms\n";
+	    << " ms\n\n";
 }
 
-//extern "C" void cudaProxy(pxBase* img, int32_t w, int32_t h);
-void cudaProxy(pxBase* img, int64_t w, int64_t h);
+extern "C" void cudaProxy(pxBase* img, int64_t w, int64_t h);
 
 
 /*
@@ -220,8 +221,7 @@ int main(int, char**){
   ImageGIL img_in, img_out, img_energy_out;
   ImageManagerBoost im;
   img_in = im.openImage(imgPath).value_or(img_in);
-  std::cout << "open image: " << im.getEText() << std::endl;
-
+  //std::cout << "open image: " << im.getEText() << std::endl;
 
   
   ByteImgWrapper img_byte ( img_in.m_img.width(), img_in.m_img.height() );
@@ -236,35 +236,12 @@ int main(int, char**){
   img_out = ImageGIL( rgb8_image_t(img_byte.width, img_byte.height) );
   bytes2img(img_byte, view(img_out.m_img));
   im.saveImage(ImgPathOut, img_out);
-  std::cout << "save out image: " << im.getEText() << std::endl;
-
-  // img_energy_out =ImageGIL( rgb8_image_t(img_energy_byte_out.width, img_energy_byte_out.height) );
-  // bytes2img(img_energy_byte_out, view(img_energy_out.m_img));
-  // im.saveImage(ImgEnergyPathOut, img_energy_out);
-  // std::cout << "save energy image: " << im.getEText() << std::endl;
-
-
+  //std::cout << "save out image: " << im.getEText() << std::endl;
   
   ByteImgWrapper img_byte2 ( img_in.m_img.width(), img_in.m_img.height() );
   img2bytes(view(img_in.m_img), img_byte2);
-
-  // for(int y = 0; y < img_byte2.height; y++){
-  //   for(int x = 0; x < img_byte2.width; x++)
-  //     std::cout << std::setw(4) << (int)img_byte2(x,y).r << std::setw(4) << (int)img_byte2(x,y).g << std::setw(4) << (int)img_byte2(x,y).b << "     ";
-  //   std::cout << std::endl;
-  //   }
-  // std::cout << std::endl;
-
   
   uint8_t* imgp = reinterpret_cast<uint8_t*>(img_byte2.img_byte.data());
-  // for(int y = 0; y < img_byte2.height; y++){
-  //   for(int x = 0; x < img_byte2.width; x++)
-  //     printf("%4i%4i%4i     ", (int)imgp[3*(x+y*img_byte2.width)] , (int)(imgp[3*(x+y*img_byte2.width)+1]), (int)(imgp[3*(x+y*img_byte2.width)+2]));
-  //   //std::cout << std::setw(8) << energyTable(x,y);
-  //   printf("\n");
-  // }
-  // std::cout << std::endl;
-
   
   auto bar = [&]{ cudaProxy(imgp, img_byte2.width, img_byte2.height); };
   timeMeasure(bar);

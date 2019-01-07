@@ -107,6 +107,6 @@ $(PCH_PATH)/%.$(HDR_EXT).gch: $(INC_PATH)/%.$(HDR_EXT)
 cuda : $(CUDAO)
 $(BUILD_PATH)/%.o: $(SRC_PATH)/%.$(CUDA_EXT)
 	@echo "Compiling gpu: $< -> $@" 
-	$(CCUDA) -ccbin g++-5 -m64 -arch=sm_61 -I/include -I./src -dc $< -o $@ -lineinfo --ptxas-options=-v --use_fast_math -L/lib64 -lcudart -lcuda
-	$(CCUDA) -ccbin g++-5 -m64 -arch=sm_61 -dlink $(OBJECTS) $(CUDAO) -o $(BUILD_PATH)/gpu.o
+	$(CCUDA) -ccbin gcc-5 -m64 -arch=sm_61 -I/include -I./src -dc $< -o $@ -lineinfo --ptxas-options=-v --use_fast_math -L/lib64 -lcudart -lcuda
+	$(CCUDA) -ccbin gcc-5 -m64 -arch=sm_61 -dlink $(OBJECTS) $(CUDAO) -o $(BUILD_PATH)/gpu.o
 
