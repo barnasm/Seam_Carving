@@ -189,11 +189,11 @@ void SeamCarving(const auto& img_in, auto& img_byte, auto& img_energy_byte_out, 
     energyTable.width--;
     energyTableSum.width--;
     
-    // for(int y = 0; y < energyTable.height; y++){
-    //   for(int x = 0; x < energyTable.width; x++)
-    // 	std::cout << std::setw(8) << (int)removedPixels(x,y);
-    //   std::cout << std::endl;
-    // }  std::cout << std::endl;
+    for(int y = 0; y < energyTable.height; y++){
+      for(int x = 0; x < energyTable.width; x++)
+    	std::cout << std::setw(8) << (int)removedPixels(x,y);
+      std::cout << std::endl;
+    }  std::cout << std::endl;
     
   }
 }
@@ -221,8 +221,8 @@ extern "C" void cudaProxy(pxBase* img, pxBase* img_res, int64_t w, int64_t h, in
   main
 */
 int main(int argc, char** argv){
-  int N = 150;
-  std::string imgPath = "images/img.bmp"; // why ""s doesnt work?
+  int N = 1;
+  std::string imgPath = "images/10x10.bmp"; // why ""s doesnt work?
 
   // int c;
   // while ((c = getopt (argc, argv, "f:s:")) != -1)

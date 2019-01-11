@@ -6,7 +6,7 @@
 #include <curand.h>
 #include <helper_cuda.h>
 
-#define TPB 21//threads per block
+#define TPB 1//threads per block
 #define BLOCKS 1
 
 typedef struct{
@@ -134,7 +134,7 @@ __global__ void findMinPath(int32_t * energy, int32_t * energySum, int32_t * rem
   for(int i=1; i < h; i++){
     int off = x;
     //removedPixels[off + (w*(h-i))] = true;
-    removedPixels[h-1] = off + (w*(h-i));
+    removedPixels[h-i] = off;
     y -= w;
     
      if(off == 0)
@@ -164,10 +164,26 @@ __global__ void removeSeam(int32_t * removedPixels, pixel_t * img, pixel_t * img
   
   int end = min((int)(begin + idxPerThread), (int)(w*h));
 
+  printf("%6i %6i %6i %6i %6i %6i\n",
+  	 indo, nThreads, idxPerThread, begin, end, indo<underCompute);
+
+  
   for(int i = begin; i < end; i++){
-    int o = removedPixels[i/w] >= i%w ? 1 : 0;
-    img_res[i] = img[i+o]; 
+    printf("%6i %6i %6i %6i %6i %6i\n",
+	   i, (int)w, i/(int)w, i%w, removedPixels[i/w]);
+
+    int o = removedPixels[i/w] >= (i%w) ? 1 : 0;
+    img_res[i] = img[i+o];
   }
+
+  /* int i = begin; */
+  /* for (int y=i/w; y<h; ++y) */
+  /*   for (int x=i%w, o=0; x<w-1; ++x, i++){ */
+  /*     if(i >= end) return; */
+  /*     if(x >= removedPixels[y]) o=1; */
+  /*     img_res[x+(w-1)*y] = img[x+o + w*y]; */
+  /*   } */
+
   
   /* for (int y=0; y<h; ++y) */
   /*   for (int x=0, o=0; x<w-1; ++x){ */
@@ -191,10 +207,10 @@ extern "C" void cudaProxy(uint8_t* h_img, uint8_t* h_img_res, int64_t w, int64_t
   pixel_t *d_img_res;
   int32_t *d_energy;
   int32_t *d_energySum;
-  int8_t  *d_removedPixels;
+  int32_t *d_removedPixels;
   //int32_t h_energy[w*h];
   //int32_t h_energySum[w*h];
-  //int8_t  h_removedPixels[w*h];
+  int32_t  h_removedPixels[h];
   checkCudaErrors( cudaMalloc((void **)&d_img, sizeof(pixel_t)*w*h+1 ) );
   checkCudaErrors( cudaMalloc((void **)&d_energy,        sizeof(int32_t)*w*h ) );
   checkCudaErrors( cudaMalloc((void **)&d_energySum,     sizeof(int32_t)*w*h ) );
@@ -236,11 +252,20 @@ extern "C" void cudaProxy(uint8_t* h_img, uint8_t* h_img_res, int64_t w, int64_t
     findMinPath<<<1, 1>>>(d_energy, d_energySum, d_removedPixels, w, h);
     removeSeam<<<BLOCKS, TPB>>>(d_removedPixels, d_img, d_img_res, w, h);
 
+    checkCudaErrors( cudaMemcpy(h_removedPixels, d_removedPixels, sizeof(int32_t)*h, cudaMemcpyDeviceToHost) );
+
     checkCudaErrors( cudaFree(d_img) );
     checkCudaErrors( cudaFree(d_removedPixels) );
 
     d_img = d_img_res;
     w--;
+
+  
+    for(int y = 0; y < h; y++){
+      printf("%8i", (int)h_removedPixels[y]);
+    printf("\n");
+  }
+
   }
   cudaDeviceSynchronize();
   /*
