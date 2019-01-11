@@ -6,8 +6,8 @@
 #include <curand.h>
 #include <helper_cuda.h>
 
-#define TPB 1//threads per block
-#define BLOCKS 1
+#define TPB 512//threads per block
+#define BLOCKS 4
 
 typedef struct{
   uint8_t r, g, b;
@@ -164,25 +164,27 @@ __global__ void removeSeam(int32_t * removedPixels, pixel_t * img, pixel_t * img
   
   int end = min((int)(begin + idxPerThread), (int)(w*h));
 
-  printf("%6i %6i %6i %6i %6i %6i\n",
-  	 indo, nThreads, idxPerThread, begin, end, indo<underCompute);
+  /* printf("%6i %6i %6i %6i %6i %6i\n", */
+  /* 	 indo, nThreads, idxPerThread, begin, end, indo<underCompute); */
 
   
-  for(int i = begin; i < end; i++){
-    printf("%6i %6i %6i %6i %6i %6i\n",
-	   i, (int)w, i/(int)w, i%w, removedPixels[i/w]);
+  /* for(int64_t i = begin; i < end; i++){ */
+  /*   printf("%6lli %6lli %6lli %6lli %6lli %6lli\n", */
+  /* 	   i, w, i/w, i%w, removedPixels[i/w], (int64_t)(removedPixels[i/w] <= (i%w))); */
 
-    int o = removedPixels[i/w] >= (i%w) ? 1 : 0;
-    img_res[i] = img[i+o];
-  }
+  /*   int o = removedPixels[i/w] <= (i%w) ? 1 : 0; */
+  /*   img_res[i] = img[i+o]; */
+  /* } */
 
-  /* int i = begin; */
-  /* for (int y=i/w; y<h; ++y) */
-  /*   for (int x=i%w, o=0; x<w-1; ++x, i++){ */
-  /*     if(i >= end) return; */
-  /*     if(x >= removedPixels[y]) o=1; */
-  /*     img_res[x+(w-1)*y] = img[x+o + w*y]; */
-  /*   } */
+  int64_t i = begin;
+  for (int y=i/(w-1); y<h; ++y)
+    for (int x= i==begin ? i%(w-1) : 0; x<w-1; ++x, i++){
+      /* printf("%6lli %6lli %6lli %6lli %6lli %6lli\n", */
+      /* 	     i, w, (int64_t)x, (int64_t)y, removedPixels[i/w], (int64_t)(removedPixels[i/w] <= x)); */
+
+      if(i >= end) return;
+      img_res[x+(w-1)*y] = img[x + w*y + ((x >= removedPixels[y])? 1:0)];
+    }
 
   
   /* for (int y=0; y<h; ++y) */
@@ -261,10 +263,10 @@ extern "C" void cudaProxy(uint8_t* h_img, uint8_t* h_img_res, int64_t w, int64_t
     w--;
 
   
-    for(int y = 0; y < h; y++){
-      printf("%8i", (int)h_removedPixels[y]);
-    printf("\n");
-  }
+    /* for(int y = 0; y < h; y++){ */
+    /*   printf("%8i", (int)h_removedPixels[y]); */
+    /*   printf("\n"); */
+    /* } */
 
   }
   cudaDeviceSynchronize();
