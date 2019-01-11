@@ -123,7 +123,7 @@ __device__ int find_min(int32_t * arr, int n){
   };
 
 
-__global__ void findMinPath(int32_t * energy, int32_t * energySum, int8_t * removedPixels, int64_t  w, int64_t h){
+__global__ void findMinPath(int32_t * energy, int32_t * energySum, int32_t * removedPixels, int64_t  w, int64_t h){
 
   
   int32_t * res = energySum;
@@ -133,7 +133,8 @@ __global__ void findMinPath(int32_t * energy, int32_t * energySum, int8_t * remo
     
   for(int i=1; i < h; i++){
     int off = x;
-    removedPixels[off + (w*(h-i))] = true;
+    //removedPixels[off + (w*(h-i))] = true;
+    removedPixels[h-1] = off + (w*(h-i));
     y -= w;
     
      if(off == 0)
@@ -144,17 +145,35 @@ __global__ void findMinPath(int32_t * energy, int32_t * energySum, int8_t * remo
        x += find_min(&res[y+off-1], 3) -1;
   }
   int off = x;
-  removedPixels[off] = true;
+  //removedPixels[off] = true;
+  removedPixels[0] = off;
 }
 
 
-__global__ void removeSeam(int8_t * removedPixels, pixel_t * img, pixel_t * img_res, int64_t  w, int64_t h){
+__global__ void removeSeam(int32_t * removedPixels, pixel_t * img, pixel_t * img_res, int64_t  w, int64_t h){
+  int indo = threadIdx.x + blockIdx.x*blockDim.x;
+  int nThreads = blockDim.x * gridDim.x;
+
+  int idxPerThread = max(1, (int)(w*h/nThreads));
+  int underCompute = max((int)((w*h) - (idxPerThread*nThreads)), 0);
+
+
+  int begin = max((int)(idxPerThread * indo), 0);
+  begin += indo < underCompute ? indo: underCompute;
+  idxPerThread += !!(indo < underCompute);
   
-  for (int y=0; y<h; ++y)
-    for (int x=0, o=0; x<w-1; ++x){
-      if(removedPixels[x+w*y]) o=1;
-      img_res[x+(w-1)*y] = img[x+o + w*y];
-    }
+  int end = min((int)(begin + idxPerThread), (int)(w*h));
+
+  for(int i = begin; i < end; i++){
+    int o = removedPixels[i/w] >= i%w ? 1 : 0;
+    img_res[i] = img[i+o]; 
+  }
+  
+  /* for (int y=0; y<h; ++y) */
+  /*   for (int x=0, o=0; x<w-1; ++x){ */
+  /*     if(removedPixels[x+w*y]) o=1; */
+  /*     img_res[x+(w-1)*y] = img[x+o + w*y]; */
+  /*   } */
 }
 
 
@@ -207,7 +226,7 @@ extern "C" void cudaProxy(uint8_t* h_img, uint8_t* h_img_res, int64_t w, int64_t
   for(int i = 0; i < N; i++){
 
     checkCudaErrors( cudaMalloc((void **)&d_img_res,       sizeof(pixel_t)*(w-1)*h ) );
-    checkCudaErrors( cudaMalloc((void **)&d_removedPixels, sizeof(int8_t)*w*h ) );
+    checkCudaErrors( cudaMalloc((void **)&d_removedPixels, sizeof(int32_t)*h ) );
 
 
     computeEnergy<<<BLOCKS, TPB>>>(d_img, d_energy, w, h);
@@ -215,7 +234,7 @@ extern "C" void cudaProxy(uint8_t* h_img, uint8_t* h_img_res, int64_t w, int64_t
 				sizeof(int32_t)*w*h, cudaMemcpyDeviceToDevice) );
     computeEnergySum<<<1, 1>>>(d_energy, d_energySum, w, h);
     findMinPath<<<1, 1>>>(d_energy, d_energySum, d_removedPixels, w, h);
-    removeSeam<<<1, 1>>>(d_removedPixels, d_img, d_img_res, w, h);
+    removeSeam<<<BLOCKS, TPB>>>(d_removedPixels, d_img, d_img_res, w, h);
 
     checkCudaErrors( cudaFree(d_img) );
     checkCudaErrors( cudaFree(d_removedPixels) );
