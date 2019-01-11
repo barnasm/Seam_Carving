@@ -86,8 +86,8 @@ __global__ void computeEnergySum(int32_t * energy, int32_t * energySum, int64_t 
   
   int end = min((int)(begin + idxPerThread), (int)(w));
   
-  printf("%6i %6i %6i %6i %6i %6i\n",
-  	 indo, nThreads, idxPerThread, begin, end, indo<underCompute);
+  /* printf("%6i %6i %6i %6i %6i %6i\n", */
+  /* 	 indo, nThreads, idxPerThread, begin, end, indo<underCompute); */
 
   int32_t * res = energySum;
   
@@ -106,36 +106,82 @@ __global__ void computeEnergySum(int32_t * energy, int32_t * energySum, int64_t 
 	i++; x++; xu0++;
       }
       
-      x   += begin;
-      xu0 += begin; 
       
-      for(x, xu0; i < (end-begin); ++x, ++xu0, i++)
+      for(x += begin, xu0 += begin; i < (end-begin); ++x, ++xu0, i++)
 	res[x] += min(min(res[xu0-1], res[xu0]), res[xu0+1]);
     } 
     __syncthreads();
   }
 }
+
+__device__ int find_min(int32_t * arr, int n){
+    int minIdx = 0;
+    for(int i = 0; i < n; i++)
+      if (arr[i] < arr[minIdx])
+	minIdx = i;
+    return minIdx;
+  };
+
+
+__global__ void findMinPath(int32_t * energy, int32_t * energySum, int8_t * removedPixels, int64_t  w, int64_t h){
+
+  
+  int32_t * res = energySum;
+    
+  int y = w * (h-1);
+  int x = find_min(&res[y], w);
+    
+  for(int i=1; i < h; i++){
+    int off = x;
+    removedPixels[off + (w*(h-i))] = true;
+    y -= w;
+    
+     if(off == 0)
+       x = find_min(&res[y], 2);
+     else if(off == w-1)
+       x += find_min(&res[y+off-1], 2) -1;
+     else
+       x += find_min(&res[y+off-1], 3) -1;
+  }
+  int off = x;
+  removedPixels[off] = true;
+}
+
+
+__global__ void removeSeam(int8_t * removedPixels, pixel_t * img, pixel_t * img_res, int64_t  w, int64_t h){
+  
+  for (int y=0; y<h; ++y)
+    for (int x=0, o=0; x<w-1; ++x){
+      if(removedPixels[x+w*y]) o=1;
+      img_res[x+(w-1)*y] = img[x+o + w*y];
+    }
+}
+
+
 __global__ void seamCarving(pixel_t * img, int32_t * energy, int32_t * energySum, int64_t  w, int64_t h){
   /* computeEnergy(img, energy, w, h); */
   /* computeEnergySum(energy, energySum, w, h); */
 }
 
 
-extern "C" void cudaProxy(uint8_t* h_img, int64_t w, int64_t h){
+extern "C" void cudaProxy(uint8_t* h_img, uint8_t* h_img_res, int64_t w, int64_t h, int64_t N){
   /*
     memory start
   */  
   pixel_t *d_img;
+  pixel_t *d_img_res;
   int32_t *d_energy;
   int32_t *d_energySum;
-  int32_t h_energy[w*h];
-  int32_t h_energySum[w*h];
-  
-  checkCudaErrors( cudaMalloc((void **)&d_img,       sizeof(pixel_t)*w*h+1 ) );
-  checkCudaErrors( cudaMalloc((void **)&d_energy,    sizeof(int32_t)*w*h ) );
-  checkCudaErrors( cudaMalloc((void **)&d_energySum, sizeof(int32_t)*w*h ) );
+  int8_t  *d_removedPixels;
+  //int32_t h_energy[w*h];
+  //int32_t h_energySum[w*h];
+  //int8_t  h_removedPixels[w*h];
+  checkCudaErrors( cudaMalloc((void **)&d_img, sizeof(pixel_t)*w*h+1 ) );
+  checkCudaErrors( cudaMalloc((void **)&d_energy,        sizeof(int32_t)*w*h ) );
+  checkCudaErrors( cudaMalloc((void **)&d_energySum,     sizeof(int32_t)*w*h ) );
+
+
   checkCudaErrors( cudaMemcpy(d_img, h_img, sizeof(pixel_t)*w*h, cudaMemcpyHostToDevice) );
-  
   /*
     memory stop
   */
@@ -158,10 +204,25 @@ extern "C" void cudaProxy(uint8_t* h_img, int64_t w, int64_t h){
   //int shared_mem_size = w*h *sizeof(int32_t);
   //seamCarving<<<BLOCKS, TPB, shared_mem_size>>>(d_img, w, h);
   //seamCarving<<<BLOCKS, TPB>>>(d_img, d_energy, d_energySum, w, h);
-  computeEnergy<<<BLOCKS, TPB>>>(d_img, d_energy, w, h);
-  checkCudaErrors( cudaMemcpy(d_energySum, d_energy,
-			      sizeof(int32_t)*w*h, cudaMemcpyDeviceToDevice) );
-  computeEnergySum<<<BLOCKS, 1>>>(d_energy, d_energySum, w, h);
+  for(int i = 0; i < N; i++){
+
+    checkCudaErrors( cudaMalloc((void **)&d_img_res,       sizeof(pixel_t)*(w-1)*h ) );
+    checkCudaErrors( cudaMalloc((void **)&d_removedPixels, sizeof(int8_t)*w*h ) );
+
+
+    computeEnergy<<<BLOCKS, TPB>>>(d_img, d_energy, w, h);
+    checkCudaErrors( cudaMemcpy(d_energySum, d_energy,
+				sizeof(int32_t)*w*h, cudaMemcpyDeviceToDevice) );
+    computeEnergySum<<<1, 1>>>(d_energy, d_energySum, w, h);
+    findMinPath<<<1, 1>>>(d_energy, d_energySum, d_removedPixels, w, h);
+    removeSeam<<<1, 1>>>(d_removedPixels, d_img, d_img_res, w, h);
+
+    checkCudaErrors( cudaFree(d_img) );
+    checkCudaErrors( cudaFree(d_removedPixels) );
+
+    d_img = d_img_res;
+    w--;
+  }
   cudaDeviceSynchronize();
   /*
     Stop kernel 
@@ -179,16 +240,25 @@ extern "C" void cudaProxy(uint8_t* h_img, int64_t w, int64_t h){
   /*
     memory free start
   */
-  
-  checkCudaErrors( cudaMemcpy(&h_energy, d_energy, sizeof(int32_t)*w*h, cudaMemcpyDeviceToHost) );
-  checkCudaErrors( cudaMemcpy(&h_energySum, d_energySum, sizeof(int32_t)*w*h, cudaMemcpyDeviceToHost) );
-  checkCudaErrors( cudaFree(d_img) );
 
-  for(int y = 0; y < h; y++){
-    for(int x = 0; x < w; x++)
-      printf("%8i", h_energySum[(x+y*w)]);
-    printf("\n");
-  }
+  /* for(int i = 0; i < h; i++) */
+  /*   checkCudaErrors( cudaMemcpy(&h_img_res[i*w], &d_img[(w+N)*i], sizeof(pixel_t)*w, cudaMemcpyDeviceToHost) ); */
+
+  checkCudaErrors( cudaMemcpy(h_img_res, d_img, sizeof(pixel_t)*w*h, cudaMemcpyDeviceToHost) ); 
+
+  
+  //checkCudaErrors( cudaMemcpy(&h_energy, d_energy, sizeof(int32_t)*w*h, cudaMemcpyDeviceToHost) );
+  //checkCudaErrors( cudaMemcpy(&h_energySum, d_energySum, sizeof(int32_t)*w*h, cudaMemcpyDeviceToHost) );
+  //checkCudaErrors( cudaMemcpy(&h_removedPixels, d_removedPixels, sizeof(int8_t)*w*h, cudaMemcpyDeviceToHost) );
+  checkCudaErrors( cudaFree(d_img) );
+  checkCudaErrors( cudaFree(d_energy) );
+  checkCudaErrors( cudaFree(d_energySum) );
+
+  /* for(int y = 0; y < h; y++){ */
+  /*   for(int x = 0; x < w; x++) */
+  /*     printf("%8i", (int)h_removedPixels[(x+y*w)]); */
+  /*   printf("\n"); */
+  /* } */
 
   
   /*

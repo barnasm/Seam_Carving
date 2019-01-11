@@ -8,6 +8,7 @@
 #include <ctime>
 #include "imageManager.h"
 #include "bhead.h"
+#include <unistd.h>
 
 #include <boost/gil/image.hpp>
 #include <boost/gil/typedefs.hpp>
@@ -51,6 +52,28 @@ public:
   T& operator() (int x, int y){ return img_byte[y*width + x]; }
   const T& operator() (int x, int y) const { return img_byte[y*width + x]; }
 };
+
+void img2bytes(const auto& src, auto& dst){
+  for (int y=0; y<src.height(); ++y)
+    for (int x=0; x<src.width(); ++x){
+      dst(x,y).r = src(x,y)[0];
+      dst(x,y).g = src(x,y)[1];
+      dst(x,y).b = src(x,y)[2];
+    }
+}
+
+void bytes2img(const auto& src, auto& dst){
+  for (int y=0; y<dst.height(); ++y)
+    for (int x=0; x<dst.width(); ++x){
+      dst(x,y)[0] = src(x,y).r; 
+      dst(x,y)[1] = src(x,y).g; 
+      dst(x,y)[2] = src(x,y).b; 
+    }  
+}
+
+/*
+  Seam carving
+*/
 
 void computeEnergy(const auto& src, auto& energyTable){
     
@@ -129,24 +152,6 @@ void findMinPath(const auto& energyTable, auto& energyTableSum, auto& removedPix
   removedPixels(off, 0) = true;
 }
 
-void img2bytes(const auto& src, auto& dst){
-  for (int y=0; y<src.height(); ++y)
-    for (int x=0; x<src.width(); ++x){
-      dst(x,y).r = src(x,y)[0];
-      dst(x,y).g = src(x,y)[1];
-      dst(x,y).b = src(x,y)[2];
-    }
-}
-
-void bytes2img(const auto& src, auto& dst){
-  for (int y=0; y<dst.height(); ++y)
-    for (int x=0; x<dst.width(); ++x){
-      dst(x,y)[0] = src(x,y).r; 
-      dst(x,y)[1] = src(x,y).g; 
-      dst(x,y)[2] = src(x,y).b; 
-    }  
-}
-
 void visualiseSeams(const auto& removedPixels, auto& img, const auto& energyTable){
   for (int y=0; y<img.height; ++y)
     for (int x=0; x<img.width; ++x){
@@ -166,28 +171,30 @@ void removeSeam(const auto& removedPixels, auto& img){
   img.width--;
 }
 
-
-void SeamCarving(const auto& img_in, auto& img_byte, auto& img_energy_byte_out){
+void SeamCarving(const auto& img_in, auto& img_byte, auto& img_energy_byte_out, int n = 1){
+  using Energy_t = int32_t;
   
-  for(int i = 0; i < 1// img_in.m_img.width()/10
-	; i++){
-    using Energy_t = int32_t;
-    ByteImgWrapper<Energy_t> energyTable   (img_byte.width, img_byte.height);
-    ByteImgWrapper<Energy_t> energyTableSum(img_byte.width, img_byte.height);
+  ByteImgWrapper<Energy_t> energyTable   (img_byte.width, img_byte.height);
+  ByteImgWrapper<Energy_t> energyTableSum(img_byte.width, img_byte.height);
+
+  for(int i = 0; i < n; i++){
     ByteImgWrapper<int8_t>   removedPixels (img_byte.width, img_byte.height);
     
     computeEnergy(img_byte, energyTable);
     computeEnergySum(energyTable, energyTableSum);
     findMinPath(energyTable, energyTableSum, removedPixels);
-    for(int y = 0; y < energyTable.height; y++){
-      for(int x = 0; x < energyTable.width; x++)
-    	std::cout << std::setw(8) << (int)removedPixels(x,y);
-      std::cout << std::endl;
-    }  std::cout << std::endl;
+    //visualiseSeams(removedPixels, img_energy_byte_out, energyTable);
+    removeSeam(removedPixels, img_byte); 
 
+    energyTable.width--;
+    energyTableSum.width--;
     
-    // //visualiseSeams(removedPixels, img_energy_byte_out, energyTable);
-    // removeSeam(removedPixels, img_byte); 
+    // for(int y = 0; y < energyTable.height; y++){
+    //   for(int x = 0; x < energyTable.width; x++)
+    // 	std::cout << std::setw(8) << (int)removedPixels(x,y);
+    //   std::cout << std::endl;
+    // }  std::cout << std::endl;
+    
   }
 }
 
@@ -207,15 +214,43 @@ void timeMeasure(auto& foo){
 	    << " ms\n\n";
 }
 
-extern "C" void cudaProxy(pxBase* img, int64_t w, int64_t h);
+extern "C" void cudaProxy(pxBase* img, pxBase* img_res, int64_t w, int64_t h, int64_t N);
 
 
 /*
   main
 */
-int main(int, char**){
-  std::string imgPath = "images/10x10.bmp"; // why ""s doesnt work?
+int main(int argc, char** argv){
+  int N = 150;
+  std::string imgPath = "images/img.bmp"; // why ""s doesnt work?
+
+  // int c;
+  // while ((c = getopt (argc, argv, "f:s:")) != -1)
+  //   switch (c)
+  //     {
+  //     case 'f':
+  //       imgPath += optarg;
+  //       break;
+  //     case 's':
+  //       imgPath += optarg;
+
+  //       break;
+  //     case '?':
+  //       if (optopt == 'f' || optopt == 's')
+  //         fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+  //       else if (isprint (optopt))
+  //         fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+  //       else
+  //         fprintf (stderr,
+  //                  "Unknown option character `\\x%x'.\n",
+  //                  optopt);
+  //       return 1;
+  //     default:
+  //       abort ();
+  //     }
+  
   auto ImgPathOut = std::string(imgPath).insert(imgPath.find(".bmp"), "_out");
+  auto ImgPathCudaOut = std::string(imgPath).insert(imgPath.find(".bmp"), "_cuda_out");
   auto ImgEnergyPathOut = std::string(imgPath).insert(imgPath.find(".bmp"), "_energy_out");
   
   ImageGIL img_in, img_out, img_energy_out;
@@ -228,9 +263,8 @@ int main(int, char**){
   ByteImgWrapper img_energy_byte_out( img_in.m_img.width(), img_in.m_img.height() );
 
   img2bytes(view(img_in.m_img), img_byte);
-
   
-  auto foo = [&]{ SeamCarving(img_in, img_byte, img_energy_byte_out); };
+  auto foo = [&]{ SeamCarving(img_in, img_byte, img_energy_byte_out, N); };
   timeMeasure( foo );
   
   img_out = ImageGIL( rgb8_image_t(img_byte.width, img_byte.height) );
@@ -239,12 +273,17 @@ int main(int, char**){
   //std::cout << "save out image: " << im.getEText() << std::endl;
   
   ByteImgWrapper img_byte2 ( img_in.m_img.width(), img_in.m_img.height() );
+  ByteImgWrapper img_byte2_res ( img_in.m_img.width()-N, img_in.m_img.height() );
   img2bytes(view(img_in.m_img), img_byte2);
   
   uint8_t* imgp = reinterpret_cast<uint8_t*>(img_byte2.img_byte.data());
+  uint8_t* imgp_res = reinterpret_cast<uint8_t*>(img_byte2_res.img_byte.data());
   
-  auto bar = [&]{ cudaProxy(imgp, img_byte2.width, img_byte2.height); };
+  auto bar = [&]{ cudaProxy(imgp, imgp_res, img_byte2.width, img_byte2.height, N); };
   timeMeasure(bar);
+
+  bytes2img(img_byte2_res, view(img_out.m_img));
+  im.saveImage(ImgPathCudaOut, img_out);
   
   return 0;
 }
