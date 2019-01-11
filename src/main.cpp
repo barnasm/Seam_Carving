@@ -221,33 +221,33 @@ extern "C" void cudaProxy(pxBase* img, pxBase* img_res, int64_t w, int64_t h, in
   main
 */
 int main(int argc, char** argv){
-  int N = 150;
-  std::string imgPath = "images/img.bmp"; // why ""s doesnt work?
+  int N = 0;
+  std::string imgPath = "images/"; // why ""s doesnt work?
 
-  // int c;
-  // while ((c = getopt (argc, argv, "f:s:")) != -1)
-  //   switch (c)
-  //     {
-  //     case 'f':
-  //       imgPath += optarg;
-  //       break;
-  //     case 's':
-  //       imgPath += optarg;
-
-  //       break;
-  //     case '?':
-  //       if (optopt == 'f' || optopt == 's')
-  //         fprintf (stderr, "Option -%c requires an argument.\n", optopt);
-  //       else if (isprint (optopt))
-  //         fprintf (stderr, "Unknown option `-%c'.\n", optopt);
-  //       else
-  //         fprintf (stderr,
-  //                  "Unknown option character `\\x%x'.\n",
-  //                  optopt);
-  //       return 1;
-  //     default:
-  //       abort ();
-  //     }
+  int c;
+  while ((c = getopt (argc, argv, "f:s:")) != -1)
+    switch (c)
+      {
+      case 'f':
+        imgPath += optarg;
+        break;
+      case 's':
+        N = atol(optarg);
+        break;
+      case '?':
+        if (optopt == 'f' || optopt == 's')
+          fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+        else if (isprint (optopt))
+          fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+        else
+          fprintf (stderr,
+                   "Unknown option character `\\x%x'.\n",
+                   optopt);
+        return 1;
+      default:
+        abort ();
+      }
+  std::cout << "seam carving on: " << imgPath << ", remove: " << N << " pixels.\n";
   
   auto ImgPathOut = std::string(imgPath).insert(imgPath.find(".bmp"), "_out");
   auto ImgPathCudaOut = std::string(imgPath).insert(imgPath.find(".bmp"), "_cuda_out");
