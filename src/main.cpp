@@ -125,8 +125,7 @@ void findMinPath(const auto& energyTable, auto& energyTableSum, auto& removedPix
   assert(energyTable.height == energyTableSum.height);
   assert(energyTable.height == removedPixels.height);
   assert(energyTable.width  == energyTableSum.width);
-  assert(energyTable.width  == removedPixels.width);
-  
+    
   
   auto& res = energyTableSum;
     
@@ -137,7 +136,8 @@ void findMinPath(const auto& energyTable, auto& energyTableSum, auto& removedPix
     
   for(int i=1; i < res.height; i++){
     auto off = std::distance(y, x);    
-    removedPixels(off, res.height-i) = true;
+    //removedPixels(off, res.height-i) = true;
+    removedPixels(0,res.height-i) = off;
     y -= res.width;
     
      if(off == 0)
@@ -149,23 +149,24 @@ void findMinPath(const auto& energyTable, auto& energyTableSum, auto& removedPix
      //*x |= 0xffffffff;
   }
   auto off = std::distance(y, x);    
-  removedPixels(off, 0) = true;
+  removedPixels(0, 0) = off;
 }
 
 void visualiseSeams(const auto& removedPixels, auto& img, const auto& energyTable){
   for (int y=0; y<img.height; ++y)
     for (int x=0; x<img.width; ++x){
       img(x,y)[0] = img(x,y)[1] = img(x,y)[2] = energyTable(x,y)/(255*3);
-      img(x,y).r |=  -removedPixels(x,y) & 0xff;
+      img(x,y).r |=  removedPixels(0,y) == x ? 0xff : 0x0;
     }
 }
 
 void removeSeam(const auto& removedPixels, auto& img){
   ByteImgWrapper img_res(img.width-1, img.height);
   for (int y=0; y<img_res.height; ++y)
-    for (int x=0, o=0; x<img_res.width; ++x){
-      if(removedPixels(x,y)) o=1;
-      img_res(x,y) = img(x+o, y);
+    for (int x=0; x<img_res.width; ++x){
+      //if(removedPixels(x,y)) o=1;
+      //img_res(x,y) = img(x+o, y);
+      img_res(x,y) = img(x + ((x >= removedPixels(0,y))? 1:0) ,  y);
     }
   img.img_byte.swap(img_res.img_byte);
   img.width--;
@@ -176,9 +177,10 @@ void SeamCarving(const auto& img_in, auto& img_byte, auto& img_energy_byte_out, 
   
   ByteImgWrapper<Energy_t> energyTable   (img_byte.width, img_byte.height);
   ByteImgWrapper<Energy_t> energyTableSum(img_byte.width, img_byte.height);
-
+  ByteImgWrapper<Energy_t> removedPixels (1, img_byte.height);
+  
   for(int i = 0; i < n; i++){
-    ByteImgWrapper<int8_t>   removedPixels (img_byte.width, img_byte.height);
+    //ByteImgWrapper<int8_t>   removedPixels (img_byte.width, img_byte.height);
     
     computeEnergy(img_byte, energyTable);
     computeEnergySum(energyTable, energyTableSum);
@@ -211,7 +213,7 @@ void timeMeasure(auto& foo){
 	    << 1000.0 * (c_end-c_start) / CLOCKS_PER_SEC << " ms\n"
 	    << "Wall clock time passed: "
 	    << std::chrono::duration<double, std::milli>(t_end-t_start).count()
-	    << " ms\n\n";
+	    << " ms\n";
 }
 
 extern "C" void cudaProxy(pxBase* img, pxBase* img_res, int64_t w, int64_t h, int64_t N);

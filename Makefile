@@ -110,3 +110,7 @@ $(BUILD_PATH)/%.o: $(SRC_PATH)/%.$(CUDA_EXT)
 	$(CCUDA) -ccbin gcc-5 -m64 -arch=sm_61 -I/include -I./src -dc $< -o $@ -lineinfo --ptxas-options=-v --use_fast_math -L/lib64 -lcudart -lcuda
 	$(CCUDA) -ccbin gcc-5 -m64 -arch=sm_61 -dlink $(OBJECTS) $(CUDAO) -o $(BUILD_PATH)/gpu.o
 
+.PHONY: test
+test : all
+	./tests/cmpOut.sh
+

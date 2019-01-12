@@ -196,13 +196,13 @@ extern "C" void cudaProxy(uint8_t* h_img, uint8_t* h_img_res, int64_t w, int64_t
   //int32_t h_energySum[w*h];
   //int32_t  h_removedPixels[h];
 
-  checkCudaErrors( cudaMalloc((void **)&d_img, sizeof(pixel_t)*w*h+1 ) );
+  checkCudaErrors( cudaMalloc((void **)&d_img,         sizeof(pixel_t)*w*h+2*sizeof(pixel_t) ) );
   checkCudaErrors( cudaMalloc((void **)&d_energy,        sizeof(int32_t)*w*h ) );
   checkCudaErrors( cudaMalloc((void **)&d_energySum,     sizeof(int32_t)*w*h ) );
   checkCudaErrors( cudaMalloc((void **)&d_removedPixels, sizeof(int32_t)*h ) );
 
 
-  checkCudaErrors( cudaMemcpy(d_img, h_img, sizeof(pixel_t)*w*h, cudaMemcpyHostToDevice) );
+  checkCudaErrors( cudaMemcpy(&d_img[1], h_img, sizeof(pixel_t)*w*h, cudaMemcpyHostToDevice) );
   /*
     memory stop
   */
@@ -229,14 +229,16 @@ extern "C" void cudaProxy(uint8_t* h_img, uint8_t* h_img_res, int64_t w, int64_t
   
   for(int i = 0; i < N; i++){
 
-    checkCudaErrors( cudaMalloc((void **)&d_img_res,       sizeof(pixel_t)*(w-1)*h+1 ) );
-
-    computeEnergy<<<BLOCKS, TPB>>>(d_img, d_energy, w, h);
-    checkCudaErrors( cudaMemcpy(d_energySum, d_energy,
-				sizeof(int32_t)*w*h, cudaMemcpyDeviceToDevice) );
+    checkCudaErrors( cudaMalloc((void **)&d_img_res, sizeof(pixel_t)*(w-1)*h+2*sizeof(pixel_t)) );
+    
+    pixel_t *d_img_off     = &d_img[1];
+    pixel_t *d_img_res_off = &d_img_res[1];
+    
+    computeEnergy<<<BLOCKS, TPB>>>(d_img_off, d_energy, w, h);
+    checkCudaErrors( cudaMemcpy(d_energySum, d_energy, sizeof(int32_t)*w*h, cudaMemcpyDeviceToDevice) );
     computeEnergySum<<<1, TPB>>>(d_energy, d_energySum, w, h);
     findMinPath<<<1, 1>>>(d_energy, d_energySum, d_removedPixels, w, h);
-    removeSeam<<<BLOCKS, TPB>>>(d_removedPixels, d_img, d_img_res, w, h);
+    removeSeam<<<BLOCKS, TPB>>>(d_removedPixels, d_img_off, d_img_res_off, w, h);
 
     checkCudaErrors( cudaFree(d_img) );
 
@@ -265,7 +267,7 @@ extern "C" void cudaProxy(uint8_t* h_img, uint8_t* h_img_res, int64_t w, int64_t
   /* for(int i = 0; i < h; i++) */
   /*   checkCudaErrors( cudaMemcpy(&h_img_res[i*w], &d_img[(w+N)*i], sizeof(pixel_t)*w, cudaMemcpyDeviceToHost) ); */
 
-  checkCudaErrors( cudaMemcpy(h_img_res, d_img, sizeof(pixel_t)*w*h, cudaMemcpyDeviceToHost) ); 
+  checkCudaErrors( cudaMemcpy(h_img_res, &d_img[1], sizeof(pixel_t)*w*h, cudaMemcpyDeviceToHost) ); 
 
   
   //checkCudaErrors( cudaMemcpy(&h_energy, d_energy, sizeof(int32_t)*w*h, cudaMemcpyDeviceToHost) );
