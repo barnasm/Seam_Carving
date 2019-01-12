@@ -9,57 +9,29 @@
 #define TPB 512//threads per block
 #define BLOCKS 4
 
+#define WORK_PER_THREAD(wh)				\
+  int indo = threadIdx.x + blockIdx.x*blockDim.x;	\
+  int nThreads = blockDim.x * gridDim.x;		\
+							\
+  int idxPerThread = max(1, (int)(w*h/nThreads));			\
+  int underCompute = max((int)((wh) - (idxPerThread*nThreads)), 0);	\
+									\
+									\
+  int begin = max((int)(idxPerThread * indo), 0);			\
+  begin += indo < underCompute ? indo: underCompute;			\
+  idxPerThread += !!(indo < underCompute);				\
+									\
+  int end = min((int)(begin + idxPerThread), (int)(wh));
+
+
 typedef struct{
   uint8_t r, g, b;
 }pixel_t;
 
 
-__device__ void computeEnergyShared(pixel_t * img, int64_t  w, int64_t h){
-  extern __shared__  int32_t energy[];
-
-  int indo = threadIdx.x + blockIdx.x*blockDim.x;
-  int nThreads = blockDim.x * gridDim.x;
-
-  int idxPerThread = max(1, (int)(w*h/nThreads));
-  int underCompute = (w*h) - (idxPerThread*nThreads);
-
-
-  int begin = max((int)(idxPerThread * indo), 0);
-  begin += indo < underCompute ? indo: underCompute;
-  idxPerThread += !!(indo < underCompute);
-  
-  int end = min((int)(begin + idxPerThread), (int)(w*h));
-
-  //printf("%6i %6i %6i %6i %6i %6i\n", indo, nThreads, idxPerThread, begin, end);
-  
-  for(int i = begin; i < end; i++){
-    energy[i] =
-      (img[i-1].r - img[i+1].r) * (img[i-1].r - img[i+1].r) +
-      (img[i-1].g - img[i+1].g) * (img[i-1].g - img[i+1].g) +
-      (img[i-1].b - img[i+1].b) * (img[i-1].b - img[i+1].b);
-  }
-  
-  /* for(int y = 0; y < h; y++){ */
-  /*   for(int x = 0; x < w; x++) */
-  /*     printf("%8i", energy[(x+y*w)]); */
-  /*   printf("\n"); */
-  /* } */
-
-  
-}
-__global__ void computeEnergy(pixel_t * img, int32_t * energy, int64_t  w, int64_t h){
-  int indo = threadIdx.x + blockIdx.x*blockDim.x;
-  int nThreads = blockDim.x * gridDim.x;
-
-  int idxPerThread = max(1, (int)(w*h/nThreads));
-  int underCompute = max((int)((w*h) - (idxPerThread*nThreads)), 0);
-
-
-  int begin = max((int)(idxPerThread * indo), 0);
-  begin += indo < underCompute ? indo: underCompute;
-  idxPerThread += !!(indo < underCompute);
-  
-  int end = min((int)(begin + idxPerThread), (int)(w*h));
+__global__
+void computeEnergy(pixel_t * img, int32_t * energy, int64_t  w, int64_t h){
+  WORK_PER_THREAD(w*h)
 
   /* printf("%6i %6i %6i %6i %6i %6i\n", */
   /* 	 indo, nThreads, idxPerThread, begin, end, indo<underCompute); */
@@ -72,22 +44,9 @@ __global__ void computeEnergy(pixel_t * img, int32_t * energy, int64_t  w, int64
   }
 }
 
-__global__ void computeEnergySum(int32_t * energy, int32_t * energySum, int64_t  w, int64_t h){
-  int indo = threadIdx.x + blockIdx.x*blockDim.x;
-  int nThreads = blockDim.x * gridDim.x;
-
-  int idxPerThread = max(1, (int)(w/nThreads));
-  int underCompute = max((int)((w) - (idxPerThread*nThreads)), 0);
-
-
-  int begin = max((int)(idxPerThread * indo), 0);
-  begin += indo < underCompute ? indo: underCompute;
-  idxPerThread += !!(indo < underCompute);
-  
-  int end = min((int)(begin + idxPerThread), (int)(w));
-  
-  /* printf("%6i %6i %6i %6i %6i %6i\n", */
-  /* 	 indo, nThreads, idxPerThread, begin, end, indo<underCompute); */
+__global__
+void computeEnergySum(int32_t * energy, int32_t * energySum, int64_t  w, int64_t h){
+  WORK_PER_THREAD(w)
 
   int32_t * res = energySum;
   
@@ -114,7 +73,8 @@ __global__ void computeEnergySum(int32_t * energy, int32_t * energySum, int64_t 
   }
 }
 
-__device__ int find_min(int32_t * arr, int n){
+__device__
+int find_min(int32_t * arr, int n){
     int minIdx = 0;
     for(int i = 0; i < n; i++)
       if (arr[i] < arr[minIdx])
@@ -123,7 +83,8 @@ __device__ int find_min(int32_t * arr, int n){
   };
 
 
-__global__ void findMinPath(int32_t * energy, int32_t * energySum, int32_t * removedPixels, int64_t  w, int64_t h){
+__global__
+void findMinPath(int32_t * energy, int32_t * energySum, int32_t * removedPixels, int64_t  w, int64_t h){
 
   
   int32_t * res = energySum;
@@ -150,20 +111,9 @@ __global__ void findMinPath(int32_t * energy, int32_t * energySum, int32_t * rem
 }
 
 
-__global__ void removeSeam(int32_t * removedPixels, pixel_t * img, pixel_t * img_res, int64_t  w, int64_t h){
-  int indo = threadIdx.x + blockIdx.x*blockDim.x;
-  int nThreads = blockDim.x * gridDim.x;
-
-  int idxPerThread = max(1, (int)(w*h/nThreads));
-  int underCompute = max((int)((w*h) - (idxPerThread*nThreads)), 0);
-
-
-  int begin = max((int)(idxPerThread * indo), 0);
-  begin += indo < underCompute ? indo: underCompute;
-  idxPerThread += !!(indo < underCompute);
-  
-  int end = min((int)(begin + idxPerThread), (int)(w*h));
-
+__global__
+void removeSeam(int32_t * removedPixels, pixel_t * img, pixel_t * img_res, int64_t  w, int64_t h){
+  WORK_PER_THREAD(w*h)
   /* printf("%6i %6i %6i %6i %6i %6i\n", */
   /* 	 indo, nThreads, idxPerThread, begin, end, indo<underCompute); */
 
@@ -177,13 +127,15 @@ __global__ void removeSeam(int32_t * removedPixels, pixel_t * img, pixel_t * img
 }
 
 
-__global__ void seamCarving(pixel_t * img, int32_t * energy, int32_t * energySum, int64_t  w, int64_t h){
+__global__
+void seamCarving(pixel_t * img, int32_t * energy, int32_t * energySum, int64_t  w, int64_t h){
   /* computeEnergy(img, energy, w, h); */
   /* computeEnergySum(energy, energySum, w, h); */
 }
 
 
 extern "C" void cudaProxy(uint8_t* h_img, uint8_t* h_img_res, int64_t w, int64_t h, int64_t N){
+  /*force stack alignment:                                    ^^^^^^^    ^^^^^^^    ^^^^^^^  */
   /*
     memory start
   */  
@@ -196,18 +148,19 @@ extern "C" void cudaProxy(uint8_t* h_img, uint8_t* h_img_res, int64_t w, int64_t
   //int32_t h_energySum[w*h];
   //int32_t  h_removedPixels[h];
 
-  checkCudaErrors( cudaMalloc((void **)&d_img,         sizeof(pixel_t)*w*h+2*sizeof(pixel_t) ) );
-  checkCudaErrors( cudaMalloc((void **)&d_energy,        sizeof(int32_t)*w*h ) );
-  checkCudaErrors( cudaMalloc((void **)&d_energySum,     sizeof(int32_t)*w*h ) );
-  checkCudaErrors( cudaMalloc((void **)&d_removedPixels, sizeof(int32_t)*h ) );
+  checkCudaErrors( cudaMalloc((void **)&d_img,           sizeof(pixel_t)*w*h+2*sizeof(pixel_t)));
+  checkCudaErrors( cudaMalloc((void **)&d_energy,        sizeof(int32_t)*w*h));
+  checkCudaErrors( cudaMalloc((void **)&d_energySum,     sizeof(int32_t)*w*h));
+  checkCudaErrors( cudaMalloc((void **)&d_removedPixels, sizeof(int32_t)*h));
 
 
   checkCudaErrors( cudaMemcpy(&d_img[1], h_img, sizeof(pixel_t)*w*h, cudaMemcpyHostToDevice) );
   /*
     memory stop
   */
-  
-  
+  /*
+    time init
+  */
   float elapsed=0;
   cudaEvent_t start, stop;
 
@@ -215,6 +168,9 @@ extern "C" void cudaProxy(uint8_t* h_img, uint8_t* h_img_res, int64_t w, int64_t
   checkCudaErrors(cudaEventCreate(&stop));
 
   checkCudaErrors( cudaEventRecord(start, 0));
+  /*
+    time init end
+  */
   /*
     Run kernel
   */
@@ -250,46 +206,33 @@ extern "C" void cudaProxy(uint8_t* h_img, uint8_t* h_img_res, int64_t w, int64_t
   /*
     Stop kernel 
   */
+  /*
+    time save 
+  */
   checkCudaErrors(cudaEventRecord(stop, 0));
   checkCudaErrors(cudaEventSynchronize (stop) );
 
   checkCudaErrors(cudaEventElapsedTime(&elapsed, start, stop) );
 
-  
   checkCudaErrors(cudaEventDestroy(start));
   checkCudaErrors(cudaEventDestroy(stop));
 
   printf("The elapsed time in gpu was %.2f ms\n", elapsed);
-
+  /*
+    time save end
+  */
   /*
     memory free start
   */
-
-  /* for(int i = 0; i < h; i++) */
-  /*   checkCudaErrors( cudaMemcpy(&h_img_res[i*w], &d_img[(w+N)*i], sizeof(pixel_t)*w, cudaMemcpyDeviceToHost) ); */
-
   checkCudaErrors( cudaMemcpy(h_img_res, &d_img[1], sizeof(pixel_t)*w*h, cudaMemcpyDeviceToHost) ); 
-
   
-  //checkCudaErrors( cudaMemcpy(&h_energy, d_energy, sizeof(int32_t)*w*h, cudaMemcpyDeviceToHost) );
-  //checkCudaErrors( cudaMemcpy(&h_energySum, d_energySum, sizeof(int32_t)*w*h, cudaMemcpyDeviceToHost) );
-  //checkCudaErrors( cudaMemcpy(&h_removedPixels, d_removedPixels, sizeof(int8_t)*w*h, cudaMemcpyDeviceToHost) );
   checkCudaErrors( cudaFree(d_img) );
   checkCudaErrors( cudaFree(d_energy) );
   checkCudaErrors( cudaFree(d_energySum) );
   checkCudaErrors( cudaFree(d_removedPixels) );
-
-  
-  /* for(int y = 0; y < h; y++){ */
-  /*   for(int x = 0; x < w; x++) */
-  /*     printf("%8i", (int)h_removedPixels[(x+y*w)]); */
-  /*   printf("\n"); */
-  /* } */
-
-  
   /*
     memory free stop
-   */
+  */
   
   cudaDeviceReset();
 }
