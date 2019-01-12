@@ -255,6 +255,7 @@ extern "C" void cudaProxy(uint8_t* h_img, uint8_t* h_img_res, int64_t w, int64_t
 
   checkCudaErrors(cudaEventElapsedTime(&elapsed, start, stop) );
 
+  
   checkCudaErrors(cudaEventDestroy(start));
   checkCudaErrors(cudaEventDestroy(stop));
 

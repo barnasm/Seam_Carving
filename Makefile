@@ -111,6 +111,6 @@ $(BUILD_PATH)/%.o: $(SRC_PATH)/%.$(CUDA_EXT)
 	$(CCUDA) -ccbin gcc-5 -m64 -arch=sm_61 -dlink $(OBJECTS) $(CUDAO) -o $(BUILD_PATH)/gpu.o
 
 .PHONY: test
-test : all
+test : release
 	./tests/cmpOut.sh
 

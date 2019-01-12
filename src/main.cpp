@@ -48,9 +48,17 @@ class ByteImgWrapper{
 public:
   int height, width;
   std::vector<T> img_byte;
-  ByteImgWrapper(int w, int h): height(h), width(w), img_byte(w*h+1) {}
-  T& operator() (int x, int y){ return img_byte[y*width + x]; }
-  const T& operator() (int x, int y) const { return img_byte[y*width + x]; }
+  ByteImgWrapper(int w, int h): height(h), width(w), img_byte(w*h+2) {}
+  T& operator() (int x, int y){
+    return y*width + x >=0 ?
+      img_byte[y*width + x] :
+      *(img_byte.end()-1);
+  }
+  const T& operator() (int x, int y) const {
+    return y*width + x >= 0 ?
+      img_byte[y*width + x] :
+      *(img_byte.end()-1);
+  }
 };
 
 void img2bytes(const auto& src, auto& dst){
