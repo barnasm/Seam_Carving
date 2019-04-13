@@ -1,6 +1,8 @@
-CC = clang++#g++
+CC = g++
 
-EXE = "Seam\ Carving"
+EXE = SeamCarving
+
+OBJ_DIR = obj
 
 SRC = $(wildcard ./*.cpp)
 OBJ = $(SRC:./%.cpp=./obj/%.o)
@@ -8,11 +10,11 @@ OBJ = $(SRC:./%.cpp=./obj/%.o)
 CPPFLAGS += 
 CFLAGS += -std=c++11 -Wall
 
-LDLIBS += $(SUBLIBS) `pkg-config --cflags gtk+-3.0``pkg-config --libs gtk+-3.0` `pkg-config --cflags --libs gtkmm-3.0``pkg-config --cflags --libs gtk+-3.0`
+LDLIBS += $(SUBLIBS) `pkg-config --cflags gtk+-3.0` `pkg-config --libs gtk+-3.0` `pkg-config --cflags --libs gtkmm-3.0` `pkg-config --cflags --libs gtk+-3.0` -lpthread
 
 .PHONY: all clean
 
-all: $(EXE)
+all: dirs $(EXE)
 
 $(EXE): $(OBJ)
 	$(CC) $(CFLAGS) $(CPPFLAGS) $^ $(LDLIBS) -o $@
@@ -23,5 +25,9 @@ $(EXE): $(OBJ)
 ./obj/%.o: ./%.cpp
 	$(CC) $(CFLAGS) $(CPPFLAGS)-c $< $(LDLIBS) -o $@		
 
+dirs:
+	mkdir -p $(OBJ_DIR)
+
 clean:
-	$(RM) $(OBJ)
+	$(RM) -R $(OBJ_DIR) ${EXE}
+
