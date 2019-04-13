@@ -6,8 +6,8 @@
 #include <curand.h>
 #include <helper_cuda.h>
 
-#define TPB 512//threads per block
-#define BLOCKS 4
+#define TPB 1024//threads per block
+#define BLOCKS 256
 
 #define WORK_PER_THREAD(wh)				\
   int indo = threadIdx.x + blockIdx.x*blockDim.x;	\
@@ -44,10 +44,25 @@ void computeEnergy(pixel_t * img, int32_t * energy, int64_t  w, int64_t h){
   }
 }
 
+
 __global__
 void computeEnergySum(int32_t * energy, int32_t * energySum, int64_t  w, int64_t h){
-  WORK_PER_THREAD(w)
+  //WORK_PER_THREAD(w*1)
+  int indo = threadIdx.x + blockIdx.x*blockDim.x;
+  int nThreads = blockDim.x * gridDim.x;
 
+  int idxPerThread = max(1, (int)(w/nThreads));
+  int underCompute = max((int)((w) - (idxPerThread*nThreads)), 0);
+
+
+  int begin = max((int)(idxPerThread * indo), 0);
+  begin += indo < underCompute ? indo: underCompute;
+  idxPerThread += !!(indo < underCompute);
+  
+  int end = min((int)(begin + idxPerThread), (int)(w));
+  
+
+  
   int32_t * res = energySum;
   
   for(int y=1; y < h; ++y){
@@ -158,7 +173,7 @@ extern "C" void cudaProxy(uint8_t* h_img, uint8_t* h_img_res, int64_t w, int64_t
   /*
     memory stop
   */
-  /*
+  /*--mem-check-cuda
     time init
   */
   float elapsed=0;

@@ -267,6 +267,7 @@ void gpu(const auto& N, auto& img_in, auto& img_out){
   auto bar = [&]{ cudaProxy(imgp, imgp_res, img_byte.width, img_byte.height, N); };
   timeMeasure(bar);
 
+  img_out = ImageGIL( rgb8_image_t(img_byte_res.width, img_byte_res.height) );
   bytes2img(img_byte_res, view(img_out.m_img));
 }
 
@@ -292,7 +293,7 @@ int main(int argc, char** argv){
   auto ImgPathCudaOut   = std::string(imgPath).insert(imgPath.find(".bmp"), "_cuda_out");
   auto ImgEnergyPathOut = std::string(imgPath).insert(imgPath.find(".bmp"), "_energy_out");
   
-  ImageGIL img_in, img_out;//, img_energy_out;
+  ImageGIL img_in, img_out, img_out_cuda;//, img_energy_out;
   ImageManagerBoost im;
   img_in = im.openImage(imgPath).value_or(img_in);
   //std::cout << "open image: " << im.getEText() << std::endl;
@@ -304,8 +305,8 @@ int main(int argc, char** argv){
   }
 
   if(device == RunOn::both || device == RunOn::gpu){
-    gpu(N, img_in, img_out);
-    im.saveImage(ImgPathCudaOut, img_out);
+    gpu(N, img_in, img_out_cuda);
+    im.saveImage(ImgPathCudaOut, img_out_cuda);
   }
   
   return 0;
