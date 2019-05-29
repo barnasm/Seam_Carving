@@ -1,0 +1,123 @@
+seam carving on: images/10x10.bmp, remove: 0 pixels.
+Run: cpu and gpu.
+CPU time used: 0.03 ms
+Wall clock time passed: 0.01 ms
+The elapsed time in gpu was 0.00 ms
+CPU time used: 120.56 ms
+Wall clock time passed: 126.30 ms
+### SUCCESS: Files Are Identical! ###
+
+seam carving on: images/img.bmp, remove: 0 pixels.
+Run: cpu and gpu.
+CPU time used: 0.36 ms
+Wall clock time passed: 0.35 ms
+The elapsed time in gpu was 0.00 ms
+CPU time used: 90.17 ms
+Wall clock time passed: 98.24 ms
+### SUCCESS: Files Are Identical! ###
+
+seam carving on: images/img2.bmp, remove: 0 pixels.
+Run: cpu and gpu.
+CPU time used: 0.97 ms
+Wall clock time passed: 0.96 ms
+The elapsed time in gpu was 0.01 ms
+CPU time used: 91.07 ms
+Wall clock time passed: 94.85 ms
+### SUCCESS: Files Are Identical! ###
+
+seam carving on: images/10x10.bmp, remove: 1 pixels.
+Run: cpu and gpu.
+CPU time used: 0.03 ms
+Wall clock time passed: 0.02 ms
+The elapsed time in gpu was 0.07 ms
+CPU time used: 90.18 ms
+Wall clock time passed: 93.62 ms
+### SUCCESS: Files Are Identical! ###
+
+seam carving on: images/img.bmp, remove: 1 pixels.
+Run: cpu and gpu.
+CPU time used: 8.51 ms
+Wall clock time passed: 8.56 ms
+The elapsed time in gpu was 0.27 ms
+CPU time used: 91.66 ms
+Wall clock time passed: 97.54 ms
+### SUCCESS: Files Are Identical! ###
+
+seam carving on: images/img2.bmp, remove: 1 pixels.
+Run: cpu and gpu.
+CPU time used: 25.63 ms
+Wall clock time passed: 25.62 ms
+The elapsed time in gpu was 0.54 ms
+CPU time used: 91.29 ms
+Wall clock time passed: 94.50 ms
+### SUCCESS: Files Are Identical! ###
+
+seam carving on: images/img.bmp, remove: 5 pixels.
+Run: cpu and gpu.
+CPU time used: 38.56 ms
+Wall clock time passed: 38.60 ms
+The elapsed time in gpu was 1.30 ms
+CPU time used: 99.71 ms
+Wall clock time passed: 104.23 ms
+### SUCCESS: Files Are Identical! ###
+
+seam carving on: images/img2.bmp, remove: 5 pixels.
+Run: cpu and gpu.
+CPU time used: 123.25 ms
+Wall clock time passed: 123.24 ms
+The elapsed time in gpu was 2.16 ms
+CPU time used: 96.09 ms
+Wall clock time passed: 99.18 ms
+### SUCCESS: Files Are Identical! ###
+
+seam carving on: images/img.bmp, remove: 100 pixels.
+Run: cpu and gpu.
+CPU time used: 625.96 ms
+Wall clock time passed: 625.97 ms
+The elapsed time in gpu was 23.11 ms
+CPU time used: 114.29 ms
+Wall clock time passed: 122.55 ms
+### SUCCESS: Files Are Identical! ###
+
+seam carving on: images/img2.bmp, remove: 100 pixels.
+Run: cpu and gpu.
+CPU time used: 2225.63 ms
+Wall clock time passed: 2228.07 ms
+The elapsed time in gpu was 40.86 ms
+CPU time used: 133.44 ms
+Wall clock time passed: 139.32 ms
+### SUCCESS: Files Are Identical! ###
+
+seam carving on: images/img.bmp, remove: 250 pixels.
+Run: cpu and gpu.
+CPU time used: 1039.67 ms
+Wall clock time passed: 1039.66 ms
+The elapsed time in gpu was 55.29 ms
+CPU time used: 145.61 ms
+Wall clock time passed: 149.14 ms
+### SUCCESS: Files Are Identical! ###
+
+seam carving on: images/img2.bmp, remove: 250 pixels.
+Run: cpu and gpu.
+CPU time used: 4637.40 ms
+Wall clock time passed: 4640.59 ms
+The elapsed time in gpu was 101.54 ms
+CPU time used: 202.28 ms
+Wall clock time passed: 206.58 ms
+### SUCCESS: Files Are Identical! ###
+
+
+➜  cuda git:(master) ✗ ./main -s 1500 -d gpu -f bimg1.bmp
+seam carving on: images/bimg1.bmp, remove: 1500 pixels.
+Run: gpu.
+The elapsed time in gpu was 3674.01 ms
+CPU time used: 3799.91 ms
+Wall clock time passed: 3812.64 ms
+
+➜  cuda git:(master) ✗ ./main -s 1500 -d cpu -f bimg1.bmp
+seam carving on: images/bimg1.bmp, remove: 1500 pixels.
+Run: cpu.
+CPU time used: 285598.23 ms
+Wall clock time passed: 285601.82 ms
+
+
